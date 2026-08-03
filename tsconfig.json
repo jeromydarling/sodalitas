@@ -20,7 +20,9 @@
       "@db/*": ["./db/*"],
       "@domain/*": ["./domain/*"],
       "@worker/*": ["./worker/*"],
-      "@content/*": ["./content/*"]
+      "@content/*": ["./content/*"],
+      "@emails/*": ["./emails/*"],
+      "@ai/*": ["./ai/*"]
     },
     "esModuleInterop": true,
     "verbatimModuleSyntax": true,

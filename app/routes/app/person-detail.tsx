@@ -22,8 +22,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 
   // Accept either the slug or the raw id — links in emails carry the slug,
   // links from other records carry the id, and both should work.
-  const person =
-    (await getPersonBySlug(db, params.personId)) ?? (await getPerson(db, params.personId));
+  const person = await findPerson(db, params.personId);
   if (!person) throw data("No such person in this club.", { status: 404 });
 
   const [memberships, timeline, engagement] = await Promise.all([
@@ -91,8 +90,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   ctx.require("tasks.write");
   const db = ctx.db();
 
-  const person =
-    (await getPersonBySlug(db, params.personId)) ?? (await getPerson(db, params.personId));
+  const person = await findPerson(db, params.personId);
   if (!person) throw data("No such person in this club.", { status: 404 });
 
   const form = await request.formData();
@@ -307,6 +305,12 @@ export default function PersonDetail({ loaderData, actionData }: Route.Component
       </div>
     </div>
   );
+}
+
+/** Look someone up by slug or by id. Both forms appear in real links. */
+async function findPerson(db: ReturnType<typeof import("@db/scope").tenantDb>, key: string | undefined) {
+  if (!key) return null;
+  return (await getPersonBySlug(db, key)) ?? (await getPerson(db, key));
 }
 
 function Detail({ label, value }: { label: string; value: string | null }) {

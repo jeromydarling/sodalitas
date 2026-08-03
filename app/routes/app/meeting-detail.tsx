@@ -21,7 +21,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   ctx.require("meetings.read");
   const db = ctx.db();
 
-  const meeting = await getMeeting(db, params.meetingId);
+  const meeting = params.meetingId ? await getMeeting(db, params.meetingId) : null;
   if (!meeting) throw data("No such meeting in this club.", { status: 404 });
 
   const sheet = await attendanceSheet(db, meeting.id, meeting.club_id);
@@ -46,7 +46,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const ctx = await getContext(request, context.get(envContext));
   const db = ctx.db();
 
-  const meeting = await getMeeting(db, params.meetingId);
+  const meeting = params.meetingId ? await getMeeting(db, params.meetingId) : null;
   if (!meeting) throw data("No such meeting in this club.", { status: 404 });
   ctx.require("attendance.record", meeting.club_id);
 

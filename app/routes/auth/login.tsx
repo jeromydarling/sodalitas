@@ -7,6 +7,8 @@ import { looksLikeEmail, normalizeEmail, hashIp } from "@worker/auth/crypto";
 import { checkAll, recordFailure } from "@worker/auth/ratelimit";
 import { issueMagicLink, magicLinkUrl, safeRedirect, NEUTRAL_SIGNIN_MESSAGE } from "@worker/auth/magic";
 import { clientIp } from "@worker/context";
+import { sendTransactional } from "@emails/send";
+import { signInLink } from "@emails/templates";
 
 export function meta(_: Route.MetaArgs) {
   return marketingMeta({
@@ -53,14 +55,16 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (user) {
     const { token } = await issueMagicLink(env, { email, redirectTo });
     const url = magicLinkUrl(env.APP_URL, token);
+    const template = signInLink({ url, appUrl: env.APP_URL });
 
-    if (env.RESEND_API_KEY) {
-      // Mail adapter lands with the email suite; until then the link is logged
-      // so the flow is fully usable in development without any provider key.
-      console.log(`[auth] would email sign-in link to ${email}`);
-    } else {
-      console.log(`[auth] no mail provider configured. Sign-in link for ${email}: ${url}`);
-    }
+    // Degrades to the console when no provider is configured, so signing in
+    // works on a fresh checkout with no keys anywhere.
+    await sendTransactional(env, {
+      to: email,
+      subject: template.subject,
+      text: template.text,
+      templateKey: "signInLink",
+    });
   }
 
   await recordFailure(env.KV, "magicLink", email);

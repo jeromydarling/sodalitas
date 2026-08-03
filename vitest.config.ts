@@ -1,19 +1,18 @@
 import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react-swc";
-import path from "path";
 
 export default defineConfig({
-  plugins: [react()],
   test: {
-    environment: "jsdom",
-    globals: true,
-    setupFiles: ["./src/test/setup.ts"],
-    include: [
-      "src/**/*.{test,spec}.{ts,tsx}",
-      "supabase/functions/**/__tests__/*.{test,spec}.{ts,tsx}",
-    ],
+    environment: "node",
+    include: ["{app,worker,db,domain,content,ai,emails}/**/*.{test,spec}.{ts,tsx}"],
+    exclude: ["reference/**", "node_modules/**", "build/**"],
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: {
+      "~": new URL("./app", import.meta.url).pathname,
+      "@db": new URL("./db", import.meta.url).pathname,
+      "@domain": new URL("./domain", import.meta.url).pathname,
+      "@worker": new URL("./worker", import.meta.url).pathname,
+      "@content": new URL("./content", import.meta.url).pathname,
+    },
   },
 });

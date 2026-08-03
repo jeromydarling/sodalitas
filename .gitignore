@@ -1,15 +1,23 @@
+node_modules
+build
+dist
+dist-ssr
+.react-router
+.wrangler
+worker-configuration.d.ts
+
 # Logs
 logs
 *.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Local env — secrets are Worker secrets, never files in the repo
+.dev.vars
+.env
+.env.*
+!.env.example
 *.local
 
 # Editor directories and files
@@ -18,9 +26,6 @@ dist-ssr
 .idea
 .DS_Store
 *.suo
-*.ntvs*
-*.njsproj
-*.sln
 *.sw?
 
 # typescript build info

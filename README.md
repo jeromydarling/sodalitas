@@ -1,73 +1,69 @@
-# Welcome to your Lovable project
+# Sodalitas
 
-## Project info
+A club operating system for Rotary and Rotaract — built for how clubs and
+districts actually work: federated, volunteer-run, and turning over their
+leadership every July.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Where things are
 
-## How can I edit this code?
+```
+app/          React Router v8 routes and UI (SSR)
+worker/       Hono API at /api/*, cron handlers, the Worker entry point
+db/           Migrations, the table registry, and the tenant-scoped data layer
+domain/       Business logic — roles, scoring, signals, sanitisers. Pure and tested.
+content/      Marketing copy, guides registry, comparison data
+ai/           Provider abstraction and versioned prompts
+emails/       Templates
+reference/    The CROS codebase this app draws from. Not built, not deployed.
+```
 
-There are several ways of editing your application.
+`reference/cros/` is the Lovable/Supabase application Sodalitas is derived from.
+It is excluded from build, typecheck, lint and test. It is here so logic can be
+ported deliberately and diffed against the original, and it goes away once the
+port is finished.
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Running it
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
+npm run db:migrate:local     # apply migrations to the local D1
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+`npm run dev` serves the app through the Cloudflare Vite plugin, so D1, KV, R2
+and the AI binding behave locally the way they do in production.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## The rules this codebase holds itself to
 
-**Use GitHub Codespaces**
+**The tenant boundary is code, not configuration.** D1 has no row-level
+security. Every tenant-owned table is reached through `TenantDb` in
+`db/scope.ts`, which binds one tenant id and refuses to build a query without
+it. The escape hatch for joins requires a `{{tenant}}` token in the SQL. Tests
+in `db/scope.test.ts` parse the migrations and fail if a new table with a
+`tenant_id` column isn't registered.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+**Money is integer cents.** Everywhere, without exception.
 
-## What technologies are used for this project?
+**Scores are deterministic.** Club health and member engagement are rules-based
+and carry the drivers that produced them. AI may explain a score. It may never
+produce one.
 
-This project is built with:
+**Nothing contacts anyone on its own.** Signals become suggestions. A human
+sends the email.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+**Every integration degrades clean.** No Stripe key, no email key, no AI key —
+the app still runs end to end, with a friendly note where the feature would be.
+You should be able to use Sodalitas fully before adding a single secret.
 
-## How can I deploy this project?
+**Secrets are Worker secrets.** Never in the repo, never in a file, never in
+chat. Referenced by name only.
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Testing
 
-## Can I connect a custom domain to my Lovable project?
+```sh
+npm test          # vitest over db/, domain/, worker/, app/
+npm run typecheck
+```
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Pure logic is tested directly: authority resolution, scoring, sanitisers,
+validators, the content registry. Those tests are the ones that catch real bugs.

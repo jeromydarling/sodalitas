@@ -1,0 +1,68 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sodalitas",
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "./worker/index.ts",
+
+  // Smart Placement — run close to D1, not to the eyeball.
+  "placement": { "mode": "smart" },
+
+  "assets": {
+    "directory": "./build/client",
+    "binding": "ASSETS"
+  },
+
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+
+  // ── Non-secret vars. Secrets are Worker secrets, set via `wrangler secret put`.
+  // Every integration must degrade cleanly when its secret is absent.
+  "vars": {
+    "APP_URL": "https://sodalitas.app",
+    "APP_ENV": "production",
+    "MAIL_FROM": "hello@sodalitas.app",
+    "MAIL_REPLY_TO": "hello@sodalitas.app"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sodalitas",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "db/migrations"
+    }
+  ],
+
+  "kv_namespaces": [
+    {
+      // Sessions, magic-link tokens, rate-limit windows, feature flags,
+      // cached dashboard rollups. Ephemeral by design.
+      "binding": "KV",
+      "id": "0000000000000000000000000000000f"
+    }
+  ],
+
+  "r2_buckets": [
+    {
+      // Uploads, exports, generated PDFs, club page media.
+      "binding": "R2",
+      "bucket_name": "sodalitas-media"
+    }
+  ],
+
+  "images": { "binding": "IMAGES" },
+
+  "ai": { "binding": "AI" },
+
+  // Cron triggers. Times are UTC.
+  //   05:00 daily  — club health snapshots (nightly, idempotent)
+  //   06:15 Monday — weekly signal generation (after snapshots settle)
+  //   */15         — outbound queue drain + webhook retries
+  //   04:00 Sunday — demo tenant reset + housekeeping
+  "triggers": {
+    "crons": ["0 5 * * *", "15 6 * * 1", "*/15 * * * *", "0 4 * * 0"]
+  }
+}

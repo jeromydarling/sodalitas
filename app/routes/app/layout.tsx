@@ -23,6 +23,7 @@ const NAV = [
   { to: "/app/membership", label: "Membership", end: false },
   { to: "/app/meetings", label: "Meetings", end: false },
   { to: "/app/tasks", label: "Tasks", end: false },
+  { to: "/app/import", label: "Import", end: false },
 ];
 
 export default function AppLayout({ loaderData }: Route.ComponentProps) {

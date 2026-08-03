@@ -166,7 +166,7 @@ export function Table({ children }: { children: ReactNode }) {
   );
 }
 
-export function Th({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function Th({ children, className = "" }: { children?: ReactNode; className?: string }) {
   return (
     <th
       className={`border-b border-ink-200 pb-2 text-xs font-medium tracking-wide text-ink-500 uppercase dark:border-ink-800 ${className}`}
@@ -176,7 +176,7 @@ export function Th({ children, className = "" }: { children: ReactNode; classNam
   );
 }
 
-export function Td({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function Td({ children, className = "" }: { children?: ReactNode; className?: string }) {
   return (
     <td className={`border-b border-ink-100 py-2.5 dark:border-ink-800/60 ${className}`}>
       {children}

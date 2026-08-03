@@ -14,6 +14,9 @@ export default [
     route("compare", "routes/marketing/compare.tsx"),
   ]),
 
+  // ── Public club pages (the ClubRunner counter) ────────────────────────────
+  route("club/:clubSlug", "routes/public-club/index.tsx"),
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   route("signup", "routes/auth/signup.tsx"),
   route("login", "routes/auth/login.tsx"),
@@ -30,6 +33,7 @@ export default [
       route("meetings", "routes/app/meetings.tsx"),
       route("meetings/:meetingId", "routes/app/meeting-detail.tsx"),
       route("tasks", "routes/app/tasks.tsx"),
+      route("import", "routes/app/import.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig;

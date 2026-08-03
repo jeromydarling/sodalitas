@@ -17,7 +17,13 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   };
 }
 
-const NAV = [{ to: "/app", label: "This week", end: true }];
+const NAV = [
+  { to: "/app", label: "This week", end: true },
+  { to: "/app/people", label: "People", end: false },
+  { to: "/app/membership", label: "Membership", end: false },
+  { to: "/app/meetings", label: "Meetings", end: false },
+  { to: "/app/tasks", label: "Tasks", end: false },
+];
 
 export default function AppLayout({ loaderData }: Route.ComponentProps) {
   return (
@@ -28,7 +34,7 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
             <Link to="/app" className="font-semibold tracking-tight text-ink-900 dark:text-ink-50">
               {brand.name}
             </Link>
-            <nav className="flex gap-5 text-sm">
+            <nav className="flex gap-5 overflow-x-auto text-sm">
               {NAV.map((item) => (
                 <NavLink
                   key={item.to}

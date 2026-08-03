@@ -15,12 +15,21 @@ export default [
   ]),
 
   // ── Auth ──────────────────────────────────────────────────────────────────
+  route("signup", "routes/auth/signup.tsx"),
   route("login", "routes/auth/login.tsx"),
   route("auth/magic/:token", "routes/auth/magic.tsx"),
   route("logout", "routes/auth/logout.tsx"),
 
   // ── The app ───────────────────────────────────────────────────────────────
   layout("routes/app/layout.tsx", [
-    ...prefix("app", [index("routes/app/home.tsx")]),
+    ...prefix("app", [
+      index("routes/app/home.tsx"),
+      route("people", "routes/app/people.tsx"),
+      route("people/:personId", "routes/app/person-detail.tsx"),
+      route("membership", "routes/app/membership.tsx"),
+      route("meetings", "routes/app/meetings.tsx"),
+      route("meetings/:meetingId", "routes/app/meeting-detail.tsx"),
+      route("tasks", "routes/app/tasks.tsx"),
+    ]),
   ]),
 ] satisfies RouteConfig;

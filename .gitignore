@@ -15,10 +15,22 @@ pnpm-debug.log*
 
 # Local env — secrets are Worker secrets, never files in the repo
 .dev.vars
+.dev.vars.*
+!.dev.vars.example
 .env
 .env.*
 !.env.example
 *.local
+
+# Nothing named like a credential store, anywhere in the tree. This repository
+# is public, and a file of live secrets was committed to it once already — see
+# SECURITY-ROTATION.md. These patterns are deliberately broad.
+secrets/
+*secrets*.env
+*.pem
+*.p12
+*.key
+!app/**/*.key
 
 # Editor directories and files
 .vscode/*

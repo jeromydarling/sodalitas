@@ -8,6 +8,11 @@ Derived from CROS, rebuilt on Cloudflare Workers with D1, R2 and KV.
 
 **Live:** https://sodalitas.jer-f84.workers.dev · **Deploying:** [DEPLOY.md](./DEPLOY.md)
 
+> ⚠️ **Open credential rotation.** A file of live CROS federation secrets was
+> committed to this public repository's initial commit. It has been removed from
+> the tree, but the values remain in history and must be treated as compromised.
+> See [SECURITY-ROTATION.md](./SECURITY-ROTATION.md) — rotation has not been done.
+
 ## What it does
 
 Keeps the roster, runs the meetings, and tells you which members are drifting

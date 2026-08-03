@@ -3,6 +3,25 @@ import type { Route } from "./+types/layout";
 import { envContext } from "@worker/loadContext";
 import { brand } from "@content/brand";
 import { getContext } from "@worker/context";
+import type { Capability } from "@domain/roles";
+
+/**
+ * Navigation, gated by capability.
+ *
+ * A link that 403s when clicked is worse than no link — it teaches people the
+ * product is unreliable rather than that they lack permission. Each route's
+ * loader enforces the same capability again; this only decides what to show.
+ */
+const NAV: { to: string; label: string; end: boolean; needs?: Capability }[] = [
+  { to: "/app", label: "This week", end: true },
+  { to: "/app/people", label: "People", end: false, needs: "people.read" },
+  { to: "/app/membership", label: "Membership", end: false, needs: "membership.read" },
+  { to: "/app/meetings", label: "Meetings", end: false, needs: "meetings.read" },
+  { to: "/app/tasks", label: "Tasks", end: false, needs: "tasks.read_all" },
+  { to: "/app/district", label: "District", end: false, needs: "district.read" },
+  { to: "/app/import", label: "Import", end: false, needs: "import.run" },
+  { to: "/app/settings", label: "Settings", end: false, needs: "settings.read" },
+];
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const ctx = await getContext(request, context.get(envContext));
@@ -10,33 +29,34 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     const url = new URL(request.url);
     return redirect(`/login?redirectTo=${encodeURIComponent(url.pathname + url.search)}`);
   }
+
   return {
     user: { name: ctx.user.displayName ?? ctx.user.email, email: ctx.user.email },
+    // Titles are what a Rotarian recognises, and they're also the clearest
+    // answer to "why can't I see that?" — you can see what you hold.
     titles: ctx.authority.titles.map((t) => t.label),
-    hasTenant: ctx.tenantId !== null,
+    nav: NAV.filter((item) => !item.needs || ctx.can(item.needs)).map(({ to, label, end }) => ({
+      to,
+      label,
+      end,
+    })),
   };
 }
-
-const NAV = [
-  { to: "/app", label: "This week", end: true },
-  { to: "/app/people", label: "People", end: false },
-  { to: "/app/membership", label: "Membership", end: false },
-  { to: "/app/meetings", label: "Meetings", end: false },
-  { to: "/app/tasks", label: "Tasks", end: false },
-  { to: "/app/import", label: "Import", end: false },
-];
 
 export default function AppLayout({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex min-h-svh flex-col bg-ink-50 dark:bg-ink-950">
       <header className="border-b border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-3">
-          <div className="flex items-center gap-6">
-            <Link to="/app" className="font-semibold tracking-tight text-ink-900 dark:text-ink-50">
+          <div className="flex min-w-0 items-center gap-6">
+            <Link
+              to="/app"
+              className="shrink-0 font-semibold tracking-tight text-ink-900 dark:text-ink-50"
+            >
               {brand.name}
             </Link>
             <nav className="flex gap-5 overflow-x-auto text-sm">
-              {NAV.map((item) => (
+              {loaderData.nav.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
@@ -44,8 +64,8 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
                   prefetch="intent"
                   className={({ isActive }) =>
                     isActive
-                      ? "font-medium text-ink-900 dark:text-ink-100"
-                      : "text-ink-600 hover:text-ink-900 dark:text-ink-400"
+                      ? "shrink-0 font-medium text-ink-900 dark:text-ink-100"
+                      : "shrink-0 text-ink-600 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-100"
                   }
                 >
                   {item.label}
@@ -54,7 +74,7 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
             </nav>
           </div>
 
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex shrink-0 items-center gap-4 text-sm">
             <div className="hidden text-right sm:block">
               <p className="text-ink-800 dark:text-ink-200">{loaderData.user.name}</p>
               {loaderData.titles.length > 0 && (
@@ -62,7 +82,10 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
               )}
             </div>
             <Form method="post" action="/logout">
-              <button type="submit" className="text-ink-500 hover:text-ink-800 dark:hover:text-ink-200">
+              <button
+                type="submit"
+                className="text-ink-500 hover:text-ink-800 dark:hover:text-ink-200"
+              >
                 Sign out
               </button>
             </Form>

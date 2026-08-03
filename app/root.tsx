@@ -53,9 +53,15 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       heading = "You'll need to sign in first";
       detail = "Your session may have expired. Signing in again takes a few seconds.";
     } else if (error.status === 403) {
-      heading = "That's not yours to see";
+      heading = "That page isn't yours";
+      // Naming the missing permission turns "I can't get in" into a sentence
+      // a club president can act on in thirty seconds, instead of a support
+      // email that starts "it says I don't have access".
+      const cap = typeof error.data === "string" && error.data.includes(".") ? error.data : null;
       detail =
-        "Your role in this club doesn't include this page. If you think it should, a club president or administrator can change that in Settings.";
+        `The office you hold in this club doesn't include this page. ` +
+        (cap ? `It needs the "${cap}" permission. ` : "") +
+        `A club president or administrator can change that in Settings.`;
     } else {
       heading = `${error.status} ${error.statusText}`;
       detail = error.data || detail;

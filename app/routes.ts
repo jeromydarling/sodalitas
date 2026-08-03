@@ -34,6 +34,8 @@ export default [
       route("meetings/:meetingId", "routes/app/meeting-detail.tsx"),
       route("tasks", "routes/app/tasks.tsx"),
       route("import", "routes/app/import.tsx"),
+      route("district", "routes/app/district.tsx"),
+      route("settings", "routes/app/settings.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig;

@@ -12,6 +12,7 @@ import {
   resolveAuthority,
   can,
   require as requireCap,
+  Forbidden,
   type Authority,
   type Capability,
   type Assignment,
@@ -149,7 +150,30 @@ async function build(request: Request, env: Env): Promise<RequestContext> {
     },
     global: globalDb(env.DB),
     can: (cap, clubId) => can(authority, cap, clubId),
-    require: (cap, clubId) => requireCap(authority, cap, clubId),
+    /**
+     * Guard a loader or action.
+     *
+     * Throws a 403 *Response*, not a bare Error. A thrown Error in a loader
+     * surfaces as a 500 — so somebody who typed a URL for a page their office
+     * doesn't include would be told the product is broken rather than that the
+     * page isn't theirs. The capability travels in the body so the error page
+     * can say which one, because "you can't do that" without saying what turns
+     * into a support email every time.
+     */
+    require: (cap, clubId) => {
+      try {
+        requireCap(authority, cap, clubId);
+      } catch (err) {
+        if (err instanceof Forbidden) {
+          throw new Response(err.cap, {
+            status: 403,
+            statusText: "Forbidden",
+            headers: { "Content-Type": "text/plain" },
+          });
+        }
+        throw err;
+      }
+    },
   };
 }
 

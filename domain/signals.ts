@@ -70,6 +70,16 @@ export interface MemberFactsForSignal {
   score: number;
   daysSinceAttended: number | null;
   daysSinceTouch: number | null;
+  /**
+   * Why the engagement score came out where it did, straight from the scorer.
+   *
+   * Load-bearing. Without it this file has to guess, and its guess is always
+   * "they've stopped coming" — which produces "David hasn't been to a meeting
+   * in 4 days" for a member who attends every week but is on no committee,
+   * has never been spoken to, and is behind on dues. He is genuinely at risk;
+   * the reason simply isn't absence.
+   */
+  reasons: string[];
   /** Whether anyone already has an open task about this person. */
   hasOpenTask: boolean;
   /** Years of membership completing this week, if any. */
@@ -185,28 +195,42 @@ export function generateClubSignals(input: ClubSignalInput): Signal[] {
   }
 
   // ── Members drifting away ──
+  //
+  // Two different things get called "at risk" and they need different words and
+  // different advice. Someone who has stopped coming needs a phone call.
+  // Someone who comes every week but is on nothing, has never been spoken to,
+  // and is quietly behind on dues needs a job to do. Telling the second one
+  // "we've missed you" would be both wrong and slightly insulting.
   for (const m of input.members) {
     if (m.onLeave || m.hasOpenTask || m.risk !== "at_risk") continue;
     const days = m.daysSinceAttended;
+    const absent = days === null || days >= 45;
+
     out.push({
       kind: "at_risk",
       severity: "notice",
       clubId: input.clubId,
       personId: m.personId,
-      title: `${m.name} has been away a while`,
-      summary:
-        days === null
-          ? `${m.name} has no attendance on record and nobody has been in touch recently.`
-          : `${m.name} hasn't been to a meeting in ${days} days.`,
-      suggestedAction:
-        "A note from someone who knows them, asking how they are. Not a reminder about attendance.",
+      title: absent ? `${m.name} has been away a while` : `${m.name} is here, but not really in`,
+      summary: absent
+        ? days === null
+          ? `${m.name} has no attendance on record, and nobody has been in touch.`
+          : `${m.name} hasn't been to a meeting in ${days} days.`
+        // Lead with what the scorer actually found rather than inventing a cause.
+        : `${m.name} is still turning up. ${m.reasons[0] ?? "Their involvement has thinned out."}`,
+      suggestedAction: absent
+        ? "A note from someone who knows them, asking how they are. Not a reminder about attendance."
+        : "Ask them onto a committee or a project. Being needed is what keeps people, and they're already in the room.",
       evidence: {
         engagement_score: m.score,
         days_since_attended: days,
         days_since_contact: m.daysSinceTouch,
+        // The full picture, so the drawer can show what the summary summarised.
+        reasons: m.reasons.join("; ") || null,
       },
       dedupeKey: key("at_risk", m.personId),
-      priority: 85,
+      // Someone who has vanished is further gone than someone still in the room.
+      priority: absent ? 85 : 75,
     });
   }
 

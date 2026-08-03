@@ -158,3 +158,69 @@ api.post("/public/join/:clubSlug", async (c) => {
 
 const THANKS =
   "Thanks — someone from the club will be in touch. We're glad you're curious about us.";
+
+// ── Operations ────────────────────────────────────────────────────────────────
+//
+// Running a job by hand and re-seeding the demo. Guarded by an ADMIN_TOKEN
+// secret; when that secret isn't set these are reachable only from localhost,
+// so a fresh checkout is fully operable while a deployed Worker without the
+// secret exposes nothing.
+
+function isLocal(req: Request): boolean {
+  try {
+    const h = new URL(req.url).hostname;
+    return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
+function adminAllowed(c: { req: { raw: Request; header: (n: string) => string | undefined }; env: Env }): boolean {
+  const token = c.env.ADMIN_TOKEN;
+  if (!token) return isLocal(c.req.raw);
+  const presented = c.req.header("X-Admin-Token");
+  if (!presented || presented.length !== token.length) return false;
+  // Constant-time-ish: compare every character regardless of early mismatch.
+  let diff = 0;
+  for (let i = 0; i < token.length; i++) diff |= token.charCodeAt(i) ^ presented.charCodeAt(i);
+  return diff === 0;
+}
+
+api.post("/ops/run-job/:job", async (c) => {
+  if (!adminAllowed(c)) return c.json({ error: "forbidden" }, 403);
+  const { JOB_KEYS, runJob } = await import("./cron");
+  const job = c.req.param("job");
+  if (!(JOB_KEYS as string[]).includes(job)) {
+    return c.json({ error: "unknown_job", known: JOB_KEYS }, 400);
+  }
+  await runJob(job as (typeof JOB_KEYS)[number], c.env);
+  const row = await c.env.DB.prepare(
+    `SELECT status, stats, error, duration_ms FROM job_runs WHERE job_key = ? ORDER BY created_at DESC LIMIT 1`,
+  )
+    .bind(job)
+    .first<{ status: string; stats: string; error: string | null; duration_ms: number }>();
+  return c.json({
+    job,
+    status: row?.status,
+    duration_ms: row?.duration_ms,
+    stats: row?.stats ? JSON.parse(row.stats) : null,
+    error: row?.error ?? null,
+  });
+});
+
+api.post("/ops/seed-demo", async (c) => {
+  if (!adminAllowed(c)) return c.json({ error: "forbidden" }, 403);
+  const { reseedDemo } = await import("@db/services/demo");
+  const result = await reseedDemo(c.env, new Date().toISOString());
+  return c.json({ ok: true, ...result });
+});
+
+/** Cron health, for the operations screen and for a quick look after a deploy. */
+api.get("/ops/jobs", async (c) => {
+  if (!adminAllowed(c)) return c.json({ error: "forbidden" }, 403);
+  const { results } = await c.env.DB.prepare(
+    `SELECT job_key, status, stats, error, duration_ms, created_at
+       FROM job_runs ORDER BY created_at DESC LIMIT 40`,
+  ).all();
+  return c.json({ runs: results ?? [] });
+});

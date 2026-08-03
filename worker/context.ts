@@ -36,6 +36,8 @@ export interface Env {
   STRIPE_WEBHOOK_SECRET?: string;
   RESEND_API_KEY?: string;
   IP_HASH_SECRET?: string;
+  /** Guards /api/ops/*. Unset means those endpoints are localhost-only. */
+  ADMIN_TOKEN?: string;
 }
 
 export interface CurrentUser {

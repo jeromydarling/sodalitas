@@ -16,7 +16,7 @@ export const brand = {
   /** Latin: a fellowship, a society, a company of friends. Rotary in one word. */
   meaning: "Latin for fellowship — a company of people who choose each other.",
   tagline: "Club software that helps you keep the members you have.",
-  domain: "sodalitas.app",
+  domain: "sodalitas.jer-f84.workers.dev",
   positioning:
     "Sodalitas is a club operating system for Rotary and Rotaract. It keeps the roster, runs the meetings, and tells you which members are drifting while there's still time to do something about it.",
 } as const;

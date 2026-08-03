@@ -11,6 +11,7 @@
  */
 
 import { newId } from "@domain/ids";
+import { runNightlySnapshots, runWeeklySignals } from "./jobs/scoring";
 import type { Env } from "./context";
 
 export type JobKey =
@@ -73,27 +74,29 @@ export async function runJob(job: JobKey, env: Env): Promise<void> {
   }
 }
 
-type Job = (env: Env) => Promise<Record<string, unknown>>;
+/** A job returns whatever stats are worth recording. Serialised into job_runs. */
+type JobStats = Record<string, unknown>;
+type Job = (env: Env) => Promise<JobStats>;
 
 /**
  * The jobs themselves.
  *
- * Each is a placeholder returning an honest zero until its pipeline lands, so
- * the schedule, the health recording and the wiring are exercised from day one
- * rather than being written blind on the day the first real job ships.
+ * Where a pipeline hasn't landed yet the job returns an honest zero with a
+ * `pending` note rather than pretending to have done work — so the schedule,
+ * the health recording and the wiring are exercised from day one, and the
+ * job_runs dashboard never shows a green tick for something that didn't happen.
  */
 const JOBS: Record<JobKey, Job> = {
-  /** Recompute club health and member engagement for every active tenant. */
+  /** Recompute club health and member engagement for every active club. */
   async nightly_snapshots(env) {
-    const { results } = await env.DB.prepare(
-      `SELECT COUNT(*) AS n FROM clubs WHERE status = 'active'`,
-    ).all<{ n: number }>();
-    return { clubs_eligible: results?.[0]?.n ?? 0, snapshots_written: 0, pending: "scoring pipeline" };
+    const now = new Date().toISOString();
+    return { ...(await runNightlySnapshots(env, now.slice(0, 10), now)) };
   },
 
-  /** Generate the week's signals from the latest snapshots. */
-  async weekly_signals(_env) {
-    return { signals_written: 0, pending: "signal pipeline" };
+  /** Generate the week's signals from last night's snapshots. */
+  async weekly_signals(env) {
+    const now = new Date().toISOString();
+    return { ...(await runWeeklySignals(env, now.slice(0, 10), now)) };
   },
 
   /** Send anything queued in email_messages. Degrades to logging with no key. */
@@ -110,13 +113,35 @@ const JOBS: Record<JobKey, Job> = {
     return { queued, sent: 0, pending: "mail adapter" };
   },
 
-  /** Expire stale sessions, tokens and finished import runs. */
+  /** Expire stale sessions, and put the demo back the way it was. */
   async housekeeping(env) {
     const now = new Date().toISOString();
     const expired = await env.DB.prepare(`DELETE FROM sessions WHERE expires_at < ?`)
       .bind(now)
       .run();
-    return { sessions_expired: expired.meta.changes ?? 0 };
+
+    // The demo is the best sales argument this product has, and anyone can
+    // click around in it — including deleting things. Weekly reset, plus a
+    // self-heal if it's ever found empty, so it is never broken and never bare.
+    let demo: Record<string, unknown> = { reseeded: false };
+    try {
+      const { reseedDemo, DEMO_SLUG } = await import("@db/services/demo");
+      const row = await env.DB.prepare(
+        `SELECT (SELECT COUNT(*) FROM people p JOIN tenants t ON t.id = p.tenant_id
+                  WHERE t.slug = ? AND t.is_demo = 1) AS n`,
+      )
+        .bind(DEMO_SLUG)
+        .first<{ n: number }>();
+      const empty = (row?.n ?? 0) === 0;
+      const { stats } = await reseedDemo(env, now);
+      demo = { reseeded: true, was_empty: empty, ...stats };
+    } catch (err) {
+      // A failed demo reset must not fail housekeeping — sessions still needed
+      // expiring, and the next run will try again.
+      demo = { reseeded: false, error: err instanceof Error ? err.message : String(err) };
+    }
+
+    return { sessions_expired: expired.meta.changes ?? 0, demo };
   },
 };
 

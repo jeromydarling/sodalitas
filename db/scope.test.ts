@@ -235,6 +235,29 @@ describe("TenantDb", () => {
       expect(f.calls[0]!.params).toEqual(["Okonkwo", TENANT_A, "Duluth"]);
     });
 
+    // D1 allows five terms in a compound SELECT, against SQLite's own default
+    // of 500. Exceeding it fails at runtime with "too many terms in compound
+    // SELECT" — a message that names neither the limit nor the query. Catching
+    // it here turns a production surprise into a failing test.
+    it("refuses more UNION terms than D1 will accept", async () => {
+      const six = Array.from({ length: 6 }, () => "SELECT 1 FROM people WHERE tenant_id = {{tenant}}")
+        .join(" UNION ALL ");
+      await expect(db.raw(six)).rejects.toThrow(/6 UNION terms; D1 allows 5/);
+      expect(f.calls).toHaveLength(0);
+    });
+
+    it("allows a query at the limit", async () => {
+      const five = Array.from({ length: 5 }, () => "SELECT 1 FROM people WHERE tenant_id = {{tenant}}")
+        .join(" UNION ALL ");
+      await expect(db.raw(five)).resolves.toBeDefined();
+    });
+
+    it("suggests the fix rather than only naming the rule", async () => {
+      const six = Array.from({ length: 6 }, () => "SELECT 1 FROM people WHERE tenant_id = {{tenant}}")
+        .join(" UNION ALL ");
+      await expect(db.raw(six)).rejects.toThrow(/conditional aggregation|parallel queries/);
+    });
+
     it("catches a placeholder/param count mismatch before hitting the database", async () => {
       await expect(
         db.raw("SELECT 1 FROM people WHERE tenant_id = {{tenant}} AND a = ? AND b = ?", ["only-one"]),

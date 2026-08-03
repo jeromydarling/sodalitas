@@ -31,7 +31,7 @@ const input = (over: Partial<ClubSignalInput> = {}): ClubSignalInput => ({ ...QU
 
 const member = (over: Partial<MemberFactsForSignal> = {}): MemberFactsForSignal => ({
   personId: "pe_1", name: "Ada Okonkwo", risk: "steady", score: 75,
-  daysSinceAttended: 7, daysSinceTouch: 20, hasOpenTask: false,
+  daysSinceAttended: 7, daysSinceTouch: 20, reasons: [], hasOpenTask: false,
   anniversaryYears: null, onLeave: false, ...over,
 });
 
@@ -212,6 +212,74 @@ describe("members", () => {
     expect(s.summary).toBe("Bill Nakamura hasn't been to a meeting in 95 days.");
     expect(s.suggestedAction).toMatch(/how they are/i);
     expect(s.suggestedAction).toMatch(/not a reminder/i);
+  });
+
+  // Found by running the seeded demo and reading what it said. A member who
+  // attends every week but sits on no committee, has never been spoken to and
+  // is behind on dues is genuinely at risk — the scorer had that right. The
+  // signal simply assumed at-risk meant absence, and announced that a man who
+  // was there last Thursday "hasn't been to a meeting in 4 days".
+  it("does not claim absence for a member who is still turning up", () => {
+    const s = generateClubSignals(input({
+      members: [member({
+        name: "David Whitfield",
+        risk: "at_risk",
+        score: 29,
+        daysSinceAttended: 4,
+        daysSinceTouch: null,
+        reasons: ["They aren't involved in anything beyond meetings.", "Nobody has recorded a conversation with them."],
+      })],
+    }))[0]!;
+
+    expect(s.kind).toBe("at_risk");
+    expect(s.title).toBe("David Whitfield is here, but not really in");
+    expect(s.summary).toContain("still turning up");
+    expect(s.summary).toContain("aren't involved in anything");
+    expect(s.summary).not.toMatch(/hasn't been to a meeting/);
+    // And the advice matches the actual problem. Telling him "we've missed
+    // you" would be both wrong and slightly insulting.
+    expect(s.suggestedAction).toMatch(/committee or a project/i);
+    expect(s.suggestedAction).toMatch(/already in the room/i);
+  });
+
+  it("still says 'away' when they genuinely are", () => {
+    const s = generateClubSignals(input({
+      members: [member({
+        name: "Priya Diallo", risk: "at_risk", daysSinceAttended: 109,
+        reasons: ["They haven't been to a meeting in 109 days."],
+      })],
+    }))[0]!;
+    expect(s.title).toBe("Priya Diallo has been away a while");
+    expect(s.summary).toBe("Priya Diallo hasn't been to a meeting in 109 days.");
+    expect(s.suggestedAction).toMatch(/how they are/i);
+  });
+
+  it("ranks someone who has vanished above someone merely disengaged", () => {
+    const gone = generateClubSignals(input({
+      members: [member({ personId: "pe_a", risk: "at_risk", daysSinceAttended: 120 })],
+    }))[0]!;
+    const present = generateClubSignals(input({
+      members: [member({ personId: "pe_b", risk: "at_risk", daysSinceAttended: 3, reasons: ["Not on a committee."] })],
+    }))[0]!;
+    expect(gone.priority).toBeGreaterThan(present.priority);
+  });
+
+  it("carries the full reason list in the evidence, not just the first", () => {
+    const s = generateClubSignals(input({
+      members: [member({
+        risk: "at_risk", daysSinceAttended: 2,
+        reasons: ["First reason.", "Second reason."],
+      })],
+    }))[0]!;
+    expect(s.evidence.reasons).toBe("First reason.; Second reason.");
+  });
+
+  it("copes when the scorer gave no reason at all", () => {
+    const s = generateClubSignals(input({
+      members: [member({ risk: "at_risk", daysSinceAttended: 5, reasons: [] })],
+    }))[0]!;
+    expect(s.summary).toContain("involvement has thinned out");
+    expect(s.summary).not.toContain("undefined");
   });
 
   it("never raises a signal about someone on leave", () => {

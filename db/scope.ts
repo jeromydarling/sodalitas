@@ -46,6 +46,13 @@ export interface SelectOptions {
 
 const IDENT = /^[a-z_][a-z0-9_]*$/i;
 
+/**
+ * D1's ceiling on terms in a compound SELECT. SQLite's own default is 500;
+ * D1 sets it to 5, which is low enough that a perfectly ordinary
+ * "count six things at once" query trips it.
+ */
+export const D1_MAX_COMPOUND_SELECT = 5;
+
 /** Guard against identifier injection on the few places we interpolate names. */
 function assertIdent(name: string, what: string): void {
   if (!IDENT.test(name)) throw new ScopeError(`Invalid ${what}: ${name}`);
@@ -196,6 +203,19 @@ export class TenantDb {
     if (occurrences === 0) {
       throw new ScopeError(
         "raw() requires at least one {{tenant}} token so the query cannot escape its tenant.",
+      );
+    }
+
+    // D1 allows at most 5 terms in a compound SELECT — far below SQLite's own
+    // default of 500. Exceeding it fails at runtime with "too many terms in
+    // compound SELECT", which says nothing about the limit or where it came
+    // from. Catching it here names the real problem and the usual fix.
+    const unionTerms = (sql.match(/\bUNION\b/gi) ?? []).length + 1;
+    if (unionTerms > D1_MAX_COMPOUND_SELECT) {
+      throw new ScopeError(
+        `This query has ${unionTerms} UNION terms; D1 allows ${D1_MAX_COMPOUND_SELECT}. ` +
+          "Use conditional aggregation (SUM(CASE WHEN … THEN 1 ELSE 0 END)) over a single " +
+          "scan, or split it into parallel queries.",
       );
     }
     // Interleave: tenant params take the position of their token. Because the

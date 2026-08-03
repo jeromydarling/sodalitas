@@ -22,7 +22,8 @@
       "@worker/*": ["./worker/*"],
       "@content/*": ["./content/*"],
       "@emails/*": ["./emails/*"],
-      "@ai/*": ["./ai/*"]
+      "@ai/*": ["./ai/*"],
+      "@payments/*": ["./payments/*"]
     },
     "esModuleInterop": true,
     "verbatimModuleSyntax": true,

@@ -1,4 +1,4 @@
-import { Form, data, useNavigation } from "react-router";
+import { Form, data, redirect, useNavigation } from "react-router";
 import type { Route } from "./+types/index";
 import { envContext } from "@worker/loadContext";
 import { brand } from "@content/brand";
@@ -13,7 +13,9 @@ import { scoreSubmission } from "@domain/spam";
 import { newId } from "@domain/ids";
 import { hashIp } from "@worker/auth/crypto";
 import { checkRateLimit, recordFailure } from "@worker/auth/ratelimit";
-import { clientIp } from "@worker/context";
+import { clientIp, type Env } from "@worker/context";
+import { capability, checkoutDonation, PaymentUnavailable } from "@db/services/payments";
+import { parseDollars, formatCents } from "@domain/fees";
 import { Button, Field, Input, Textarea, formatDate } from "~/ui";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -60,7 +62,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const db = tenantDb(env.DB, club.tenant_id);
   const today = new Date().toISOString().slice(0, 10);
 
-  const [meetings, projects, officers] = await Promise.all([
+  const [meetings, projects, officers, payments] = await Promise.all([
     listMeetings(db, club.id, { from: today, limit: 6 }),
     db.all<{ name: string; summary: string | null; area_of_focus: string | null; status: string }>(
       "projects",
@@ -84,6 +86,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
           AND (r.ends_on IS NULL OR r.ends_on >= ?)`,
       [club.id, today, today],
     ),
+    capability(env, db, club.id),
   ]);
 
   const OFFICE_LABELS: Record<string, string> = {
@@ -114,6 +117,14 @@ export async function loader({ params, context }: Route.LoaderArgs) {
         speaker: m.speaker_name,
       })),
     projects,
+    donations: payments.donationsEnabled && payments.clubReady
+      ? {
+          blurb: payments.donationBlurb,
+          amounts: payments.suggestedAmounts,
+          coverFeeDefault: payments.coverFeeDefault,
+          currency: payments.currency,
+        }
+      : null,
     officers: officers.map((o) => ({
       name: `${o.preferred_name || o.first_name} ${o.last_name}`,
       office: OFFICE_LABELS[o.role_key] ?? "Officer",
@@ -134,10 +145,15 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const THANKS = "Thanks — someone from the club will be in touch. We're glad you're curious about us.";
 
   const ipKey = await hashIp(clientIp(request), env.IP_HASH_SECRET ?? "dev");
+  const form = await request.formData();
+
+  if (String(form.get("intent") ?? "") === "donate") {
+    return handleDonation(env, params.clubSlug, form, ipKey);
+  }
+
   const limit = await checkRateLimit(env.KV, "joinForm", `${ipKey}:${params.clubSlug}`);
   if (!limit.allowed) return { ok: true, message: THANKS };
 
-  const form = await request.formData();
   const verdict = scoreSubmission({
     name: String(form.get("name") ?? ""),
     email: String(form.get("email") ?? ""),
@@ -220,8 +236,69 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   return { ok: true, message: THANKS };
 }
 
+/**
+ * A gift from a stranger.
+ *
+ * Redirects to the club's own Stripe checkout. Rate-limited per IP per club,
+ * because an unthrottled checkout endpoint is a free card-testing service — and
+ * it is the club, not us, that would wear the resulting disputes.
+ */
+async function handleDonation(
+  env: Env,
+  slug: string,
+  form: FormData,
+  ipKey: string,
+): Promise<{ ok: false; message: string } | Response> {
+  const limit = await checkRateLimit(env.KV, "donate", `${ipKey}:${slug}`);
+  if (!limit.allowed) {
+    return {
+      ok: false,
+      message: "That's several attempts in a short time. Please try again in a little while.",
+    };
+  }
+  // Counted whether or not it succeeds: the thing being throttled is the rate
+  // of checkout creation, not a failure rate.
+  await recordFailure(env.KV, "donate", `${ipKey}:${slug}`);
+
+  const club = await resolvePublicClubBySlug(env.DB, slug);
+  if (!club) return { ok: false, message: "We couldn't find that club." };
+
+  // "other" hands over to the free-text box; anything else is one of the
+  // club's own suggested amounts.
+  const chosen = String(form.get("amount") ?? "");
+  const raw = chosen === "other" ? String(form.get("customAmount") ?? "") : chosen;
+  const amountCents = parseDollars(raw);
+  if (amountCents === null || amountCents <= 0) {
+    return { ok: false, message: "Please choose or type an amount." };
+  }
+
+  try {
+    const checkout = await checkoutDonation(
+      env,
+      tenantDb(env.DB, club.tenant_id),
+      {
+        clubId: club.id,
+        clubName: club.name,
+        amountCents,
+        coverFee: form.get("coverFee") === "on",
+        donorName: String(form.get("donorName") ?? "").slice(0, 200) || null,
+        donorEmail: String(form.get("donorEmail") ?? "").slice(0, 254) || null,
+      },
+      new Date().toISOString(),
+    );
+    return redirect(checkout.url);
+  } catch (err) {
+    if (err instanceof PaymentUnavailable) return { ok: false, message: err.message };
+    console.error("[donate] checkout failed", err);
+    return {
+      ok: false,
+      message: "We couldn't start that payment. Please try again, or contact the club directly.",
+    };
+  }
+}
+
 export default function PublicClub({ loaderData, actionData }: Route.ComponentProps) {
-  const { club, meetings, projects, officers } = loaderData;
+  const { club, meetings, projects, officers, donations } = loaderData;
   const nav = useNavigation();
 
   return (
@@ -332,6 +409,98 @@ export default function PublicClub({ loaderData, actionData }: Route.ComponentPr
             </Form>
           )}
         </section>
+
+        {donations && (
+          <section className="mt-8 rounded-2xl border border-ink-200 bg-white p-6 dark:border-ink-800 dark:bg-ink-900">
+            <h2 className="text-xl font-semibold text-ink-900 dark:text-ink-100">
+              Support the club's work
+            </h2>
+            <p className="mt-1.5 text-pretty text-ink-600 dark:text-ink-400">
+              {donations.blurb ??
+                `Gifts go directly to ${club.name} and pay for the projects above.`}
+            </p>
+
+            <Form method="post" className="mt-6 space-y-4">
+              <input type="hidden" name="intent" value="donate" />
+
+              <fieldset>
+                <legend className="text-sm font-medium text-ink-800 dark:text-ink-200">
+                  Amount
+                </legend>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {donations.amounts.map((cents, i) => (
+                    <label
+                      key={cents}
+                      className="cursor-pointer rounded-lg border border-ink-300 px-4 py-2 text-ink-800 has-checked:border-brand-500 has-checked:bg-brand-500/10 has-checked:text-brand-600 dark:border-ink-700 dark:text-ink-200"
+                    >
+                      <input
+                        type="radio"
+                        name="amount"
+                        value={(cents / 100).toFixed(2)}
+                        defaultChecked={i === 1 || donations.amounts.length === 1}
+                        className="sr-only"
+                      />
+                      {formatCents(cents, donations.currency)}
+                    </label>
+                  ))}
+                  <label className="cursor-pointer rounded-lg border border-ink-300 px-4 py-2 text-ink-800 has-checked:border-brand-500 has-checked:bg-brand-500/10 has-checked:text-brand-600 dark:border-ink-700 dark:text-ink-200">
+                    <input type="radio" name="amount" value="other" className="sr-only" />
+                    Another amount
+                  </label>
+                </div>
+              </fieldset>
+
+              <Field label="If another amount, how much?" name="customAmount">
+                <Input
+                  id="customAmount"
+                  name="customAmount"
+                  inputMode="decimal"
+                  placeholder="75"
+                  className="w-32"
+                />
+              </Field>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Your name" name="donorName" hint="Optional — so the club can thank you.">
+                  <Input id="donorName" name="donorName" autoComplete="name" />
+                </Field>
+                <Field label="Email" name="donorEmail" hint="For your receipt.">
+                  <Input id="donorEmail" name="donorEmail" type="email" autoComplete="email" />
+                </Field>
+              </div>
+
+              {/* Asked plainly, once. Most people say yes; nobody is nudged, and
+                  declining costs the donor nothing and is not commented on. */}
+              <label className="flex items-start gap-2.5 text-sm text-ink-700 dark:text-ink-300">
+                <input
+                  type="checkbox"
+                  name="coverFee"
+                  defaultChecked={donations.coverFeeDefault}
+                  className="mt-0.5 rounded border-ink-300"
+                />
+                <span>
+                  Add the card processing fee so the club receives the full amount
+                  <span className="block text-xs text-ink-500">
+                    About 3% plus 30¢. Untick it if you'd rather not — the gift is welcome either
+                    way.
+                  </span>
+                </span>
+              </label>
+
+              {actionData && actionData.ok === false && (
+                <p className="text-sm text-risk-500">{actionData.message}</p>
+              )}
+
+              <Button type="submit" disabled={nav.state === "submitting"}>
+                {nav.state === "submitting" ? "One moment…" : "Continue to payment"}
+              </Button>
+              <p className="text-xs text-ink-500">
+                Payment is handled by Stripe on the club's own account. {club.name} receives the
+                money directly.
+              </p>
+            </Form>
+          </section>
+        )}
 
         {officers.length > 0 && (
           <section className="mt-12">

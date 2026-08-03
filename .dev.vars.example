@@ -13,9 +13,22 @@
 # explain that AI isn't configured and everything else works.
 # ANTHROPIC_API_KEY=
 
-# Dues and donations. Without it, payment settings are hidden and dues can
-# still be recorded and marked paid by hand.
+# Dues and donations. Without these, payment settings are hidden and dues can
+# still be billed, recorded, waived and marked paid by hand.
+#
+# Each club connects its own Stripe account through Connect, so charges are
+# created on the club's account and the money never touches ours. That needs
+# all three: the platform key to call the API, the Connect client id to send a
+# treasurer to, and the webhook secret to trust what comes back.
+#
+# The webhook secret is the load-bearing one. A webhook is the only thing in
+# the product that marks money received, and without a secret to verify it the
+# endpoint refuses every delivery rather than trusting an unsigned body.
+#
+# For local development, `stripe listen --forward-to localhost:5173/api/stripe/webhook`
+# prints a whsec_… to use here.
 # STRIPE_SECRET_KEY=
+# STRIPE_CONNECT_CLIENT_ID=
 # STRIPE_WEBHOOK_SECRET=
 
 # Outbound mail. Without it, every message is written to email_messages with

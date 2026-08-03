@@ -10,7 +10,7 @@ import { getContext, clientIp, Unauthenticated, NoTenant, type Env } from "./con
 import { Forbidden } from "@domain/roles";
 import { ScopeError } from "@db/scope";
 import { checkRateLimit, recordFailure } from "./auth/ratelimit";
-import { hashIp } from "./auth/crypto";
+import { hashIp, issueToken } from "./auth/crypto";
 import { newId } from "@domain/ids";
 
 export const api = new Hono<{ Bindings: Env }>().basePath("/api");
@@ -158,6 +158,299 @@ api.post("/public/join/:clubSlug", async (c) => {
 
 const THANKS =
   "Thanks — someone from the club will be in touch. We're glad you're curious about us.";
+
+// ── Payments ──────────────────────────────────────────────────────────────────
+//
+// Everything here is absent-safe. Without STRIPE_SECRET_KEY these endpoints
+// answer honestly that online payment isn't set up, and the dues system carries
+// on working exactly as it does for a club that only ever takes cheques.
+
+/**
+ * Send a treasurer to Stripe to link the club's own account.
+ *
+ * A GET that redirects, because it's a link in the settings page rather than a
+ * form post. The `state` is a random token held in KV for ten minutes and bound
+ * to the user and club that started the flow — without it, anyone could hand a
+ * treasurer a crafted return URL and attach *their* Stripe account to the
+ * club's payments.
+ */
+api.get("/stripe/connect/start", async (c) => {
+  const { requireTenant } = await import("./context");
+  const ctx = await requireTenant(c.req.raw, c.env);
+  const clubId = c.req.query("club");
+  if (!clubId) return c.json({ error: "bad_request", message: "Which club?" }, 400);
+  ctx.require("payments.settings", clubId);
+
+  const { connectConfigured, connectAuthorizeUrl } = await import("@payments/stripe");
+  if (!connectConfigured(c.env)) {
+    return c.json(
+      {
+        error: "not_configured",
+        message:
+          "Online payment isn't switched on for this installation. Everything else about dues works without it.",
+      },
+      503,
+    );
+  }
+
+  const club = await ctx.db().byId<{ name: string }>("clubs", clubId, { columns: "name" });
+  if (!club) return c.json({ error: "not_found" }, 404);
+
+  const { token: state } = await issueToken();
+  await c.env.KV.put(
+    `stripe:oauth:${state}`,
+    JSON.stringify({ userId: ctx.user.id, tenantId: ctx.tenantId, clubId }),
+    { expirationTtl: 600 },
+  );
+
+  return c.redirect(
+    connectAuthorizeUrl(c.env, state, { email: ctx.user.email, clubName: club.name }),
+  );
+});
+
+/** Stripe sends the treasurer back here. */
+api.get("/stripe/connect/return", async (c) => {
+  const { tenantDb } = await import("@db/scope");
+  const state = c.req.query("state");
+  const code = c.req.query("code");
+  const denied = c.req.query("error");
+
+  const fail = (reason: string) =>
+    c.redirect(`/app/settings?payments=${encodeURIComponent(reason)}`);
+
+  // The treasurer pressed cancel in Stripe. Not an error worth a scary page.
+  if (denied) return fail("cancelled");
+  if (!state || !code) return fail("incomplete");
+
+  const raw = await c.env.KV.get(`stripe:oauth:${state}`);
+  if (!raw) return fail("expired");
+  // Single-use: a state token that has been spent cannot be replayed.
+  await c.env.KV.delete(`stripe:oauth:${state}`);
+
+  const pending = JSON.parse(raw) as { userId: string; tenantId: string; clubId: string };
+
+  // Re-check authority now, not just when the flow started. A role can change
+  // in the minutes a treasurer spends filling in Stripe's forms.
+  const ctx = await getContext(c.req.raw, c.env);
+  if (!ctx.user || ctx.user.id !== pending.userId || ctx.tenantId !== pending.tenantId) {
+    return fail("wrong_account");
+  }
+  if (!ctx.can("payments.settings", pending.clubId)) return fail("not_allowed");
+
+  const { exchangeConnectCode } = await import("@payments/stripe");
+  const { linkAccount } = await import("@db/services/payments");
+
+  try {
+    const accountId = await exchangeConnectCode(c.env, code);
+    const result = await linkAccount(
+      c.env,
+      tenantDb(c.env.DB, pending.tenantId),
+      pending.clubId,
+      accountId,
+      ctx.user.id,
+      ctx.now,
+    );
+    return c.redirect(`/app/settings?payments=${result.chargesEnabled ? "linked" : "pending"}`);
+  } catch (err) {
+    console.error("[stripe] connect exchange failed", err);
+    return fail("failed");
+  }
+});
+
+// Refreshing and unlinking an account live in the Settings route's own action
+// rather than here. They're pressed from a form on a page, and a native form
+// post to a JSON endpoint leaves the treasurer staring at `{"ok":true}`.
+
+/** Start a card payment for one dues invoice. */
+api.post("/pay/invoice/:invoiceId", async (c) => {
+  const { requireTenant } = await import("./context");
+  const ctx = await requireTenant(c.req.raw, c.env);
+  const invoiceId = c.req.param("invoiceId");
+
+  const invoice = await ctx
+    .db()
+    .byId<{ club_id: string; person_id: string }>("dues_invoices", invoiceId, {
+      columns: "club_id, person_id",
+    });
+  if (!invoice) return c.json({ error: "not_found" }, 404);
+
+  // A member may pay their own invoice without holding a payments capability —
+  // paying what you owe is not an administrative act. Anyone paying somebody
+  // else's needs the capability.
+  const own = await ctx
+    .db()
+    .first<{ id: string }>("people", {
+      columns: "id",
+      where: "id = ? AND user_id = ?",
+      params: [invoice.person_id, ctx.user.id],
+    });
+  if (!own) ctx.require("payments.write", invoice.club_id);
+
+  const body = await c.req
+    .json<{ coverFee?: boolean }>()
+    .catch(() => ({}) as { coverFee?: boolean });
+  const club = await ctx.db().byId<{ name: string }>("clubs", invoice.club_id, { columns: "name" });
+
+  const { checkoutInvoice, PaymentUnavailable } = await import("@db/services/payments");
+  try {
+    const result = await checkoutInvoice(
+      c.env,
+      ctx.db(),
+      {
+        invoiceId,
+        clubId: invoice.club_id,
+        clubName: club?.name ?? "the club",
+        coverFee: body.coverFee === true,
+        payerEmail: ctx.user.email,
+      },
+      ctx.now,
+    );
+    return c.json(result);
+  } catch (err) {
+    if (err instanceof PaymentUnavailable) {
+      return c.json({ error: "unavailable", message: err.message }, 400);
+    }
+    throw err;
+  }
+});
+
+/**
+ * Public donation.
+ *
+ * Rate-limited per IP per club, because an unthrottled checkout endpoint is a
+ * free card-testing service running on somebody else's Stripe account.
+ */
+api.post("/public/donate/:clubSlug", async (c) => {
+  const { tenantDb } = await import("@db/scope");
+  const { resolvePublicClubBySlug } = await import("@db/publicLookup");
+  const slug = c.req.param("clubSlug");
+
+  const ipKey = await hashIp(clientIp(c.req.raw), c.env.IP_HASH_SECRET ?? "dev");
+  const limit = await checkRateLimit(c.env.KV, "donate", `${ipKey}:${slug}`);
+  if (!limit.allowed) {
+    return c.json(
+      {
+        error: "rate_limited",
+        message: "That's a lot of attempts in a short time. Please try again shortly.",
+      },
+      429,
+      { "Retry-After": String(limit.retryAfter) },
+    );
+  }
+  // Counted whether or not it succeeds: the thing being throttled is the rate
+  // of checkout creation, not a failure rate.
+  await recordFailure(c.env.KV, "donate", `${ipKey}:${slug}`);
+
+  const club = await resolvePublicClubBySlug(c.env.DB, slug);
+  if (!club) return c.json({ error: "not_found" }, 404);
+
+  const body = await c.req.json<{
+    amountCents?: number;
+    coverFee?: boolean;
+    name?: string;
+    email?: string;
+  }>().catch(() => null);
+  if (!body) return c.json({ error: "bad_request", message: "Nothing to process." }, 400);
+
+  const amountCents = Math.round(Number(body.amountCents));
+  if (!Number.isFinite(amountCents) || amountCents <= 0) {
+    return c.json({ error: "bad_request", message: "Please choose an amount." }, 400);
+  }
+
+  const { checkoutDonation, PaymentUnavailable } = await import("@db/services/payments");
+  try {
+    const result = await checkoutDonation(
+      c.env,
+      tenantDb(c.env.DB, club.tenant_id),
+      {
+        clubId: club.id,
+        clubName: club.name,
+        amountCents,
+        coverFee: body.coverFee === true,
+        donorName: body.name?.slice(0, 200) ?? null,
+        donorEmail: body.email?.slice(0, 254) ?? null,
+      },
+      new Date().toISOString(),
+    );
+    return c.json({ url: result.url, chargedCents: result.chargedCents });
+  } catch (err) {
+    if (err instanceof PaymentUnavailable) {
+      return c.json({ error: "unavailable", message: err.message }, 400);
+    }
+    throw err;
+  }
+});
+
+/**
+ * Stripe webhooks. The only thing in the product that marks money received.
+ *
+ * Three properties this handler must have, in order of how badly each one hurts
+ * when it's missing:
+ *
+ *   1. Verified. An unsigned body means anyone can clear a club's arrears.
+ *   2. Idempotent. Stripe retries; a club must not be credited twice.
+ *   3. Fast. Stripe expects a response within seconds and retries on timeout,
+ *      so the work is small and bounded and nothing here calls back out.
+ *
+ * A 200 with a note means "I have this and won't need it again". A 500 means
+ * "please retry", and is reserved for genuine transient failure — returning it
+ * for a permanent problem produces days of pointless redelivery.
+ */
+api.post("/stripe/webhook", async (c) => {
+  const { verifyWebhook, SignatureError } = await import("@payments/stripe");
+  const { tenantDb, globalDb } = await import("@db/scope");
+  const {
+    claimEvent,
+    markEventHandled,
+    applyEvent,
+    tenantOf,
+  } = await import("@db/services/payments");
+
+  // The raw text, exactly as sent. Parsing and re-serialising first changes the
+  // bytes and every signature check would fail.
+  const payload = await c.req.text();
+
+  let event;
+  try {
+    event = await verifyWebhook(payload, c.req.header("Stripe-Signature") ?? null, c.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    if (err instanceof SignatureError) {
+      // Deliberately terse. A rejected webhook is either misconfiguration or
+      // someone probing, and neither deserves a hint about which check failed.
+      console.warn("[stripe] rejected webhook:", err.message);
+      return c.json({ error: "invalid_signature" }, 400);
+    }
+    throw err;
+  }
+
+  const now = new Date().toISOString();
+  const global = globalDb(c.env.DB);
+
+  const fresh = await claimEvent(global, event, now);
+  if (!fresh) return c.json({ ok: true, note: "already seen" });
+
+  const tenantId = tenantOf(event);
+  if (!tenantId) {
+    // A payment on the club's own Stripe account that we didn't create. Their
+    // account, their business — acknowledge and forget.
+    await markEventHandled(global, event.id, null);
+    return c.json({ ok: true, note: "not ours" });
+  }
+
+  try {
+    const outcome = await applyEvent(tenantDb(c.env.DB, tenantId), event, now);
+    await markEventHandled(global, event.id, outcome.handled ? null : outcome.note);
+    return c.json({ ok: true, note: outcome.note });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[stripe] handler failed", event.id, event.type, message);
+    // Release the claim. A 500 asks Stripe to redeliver, and a claim left in
+    // place would make claimEvent reject the very retry we just asked for —
+    // the payment would then be lost in the gap between the two.
+    await global.run(`DELETE FROM webhook_events WHERE id = ?`, [event.id]);
+    return c.json({ error: "handler_failed" }, 500);
+  }
+});
 
 // ── Operations ────────────────────────────────────────────────────────────────
 //

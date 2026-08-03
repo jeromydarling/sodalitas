@@ -7,7 +7,15 @@ import { ROLES, rolesForScope } from "@domain/roles";
 import { listPeople, displayName } from "@db/services/people";
 import { newId } from "@domain/ids";
 import { normalizeEmail, looksLikeEmail, issueToken } from "@worker/auth/crypto";
-import { PageHeader, Card, Table, Th, Td, Chip, Button, Field, Input, Select, formatDate } from "~/ui";
+import {
+  capability, saveSettings, refreshAccount, unlinkAccount, getSettings,
+} from "@db/services/payments";
+import { connectConfigured, revokeConnect } from "@payments/stripe";
+import { parseDollars } from "@domain/fees";
+import {
+  PageHeader, Card, Table, Th, Td, Chip, Button, ButtonLink, Field, Input, Select, Textarea,
+  formatDate,
+} from "~/ui";
 
 export function meta(_: Route.MetaArgs) {
   return appMeta("Settings");
@@ -33,9 +41,14 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const club = await db.first<{ id: string; name: string; slug: string }>("clubs", {
     columns: "id, name, slug",
   });
-  if (!club) return { club: null, assignments: [], people: [], canAssign: false, defaultEnd: "" };
+  if (!club) {
+    return {
+      club: null, assignments: [], people: [], canAssign: false, defaultEnd: "",
+      payments: null, canManagePayments: false, connectAvailable: false, paymentsNotice: null,
+    };
+  }
 
-  const [assignments, page] = await Promise.all([
+  const [assignments, page, payments] = await Promise.all([
     db.raw<{
       id: string; role_key: string; starts_on: string | null; ends_on: string | null;
       first_name: string | null; last_name: string | null; email: string;
@@ -50,11 +63,19 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       [club.id],
     ),
     listPeople(db, { role: "member", limit: 200 }),
+    capability(ctx.env, db, club.id),
   ]);
+
+  const url = new URL(request.url);
 
   return {
     club,
     today: ctx.today,
+    payments,
+    canManagePayments: ctx.can("payments.settings", club.id),
+    connectAvailable: connectConfigured(ctx.env),
+    // Set by the Connect round trip, which lands back here as a redirect.
+    paymentsNotice: url.searchParams.get("payments"),
     defaultEnd: endOfRotaryYear(ctx.today),
     canAssign: ctx.can("roles.assign", club.id),
     people: page.people.map((p) => ({ id: p.id, name: displayName(p), email: p.email })),
@@ -77,10 +98,65 @@ export async function action({ request, context }: Route.ActionArgs) {
   const db = ctx.db();
   const club = await db.first<{ id: string }>("clubs", { columns: "id" });
   if (!club) return { error: "This account has no club yet." };
-  ctx.require("roles.assign", club.id);
 
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
+
+  // Payment settings are a different office from assigning roles — a treasurer
+  // should be able to switch donations on without also being able to hand out
+  // the keys to the club. So the capability check follows the intent rather
+  // than guarding the whole action.
+  if (intent === "payments") {
+    ctx.require("payments.settings", club.id);
+    const amounts = String(form.get("suggestedAmounts") ?? "")
+      .split(",")
+      .map((s) => parseDollars(s))
+      .filter((n): n is number => n !== null);
+
+    await saveSettings(
+      db,
+      club.id,
+      {
+        duesOnline: form.get("duesOnline") === "on",
+        donationsEnabled: form.get("donationsEnabled") === "on",
+        donationBlurb: String(form.get("donationBlurb") ?? "").trim() || null,
+        coverFeeDefault: form.get("coverFeeDefault") === "on",
+        ...(amounts.length > 0 ? { suggestedAmounts: amounts } : {}),
+      },
+      ctx.now,
+    );
+    return { ok: true, savedPayments: true };
+  }
+
+  if (intent === "payments-refresh") {
+    ctx.require("payments.settings", club.id);
+    try {
+      const result = await refreshAccount(ctx.env, db, club.id, ctx.now);
+      if (!result) return { error: "No Stripe account is linked to this club." };
+      return { ok: true, refreshed: result.chargesEnabled };
+    } catch (err) {
+      // Stripe's own message is the actionable one here.
+      return { error: err instanceof Error ? err.message : "Stripe didn't answer." };
+    }
+  }
+
+  if (intent === "payments-unlink") {
+    ctx.require("payments.settings", club.id);
+    const settings = await getSettings(db, club.id);
+    // Forget it on our side first. If Stripe's deauthorize call fails we must
+    // still stop using an account the club has told us to stop using.
+    await unlinkAccount(db, club.id, ctx.now);
+    if (settings?.stripe_account_id && connectConfigured(ctx.env)) {
+      try {
+        await revokeConnect(ctx.env, settings.stripe_account_id);
+      } catch (err) {
+        console.error("[stripe] deauthorize failed; already unlinked locally", err);
+      }
+    }
+    return { ok: true, unlinked: true };
+  }
+
+  ctx.require("roles.assign", club.id);
 
   if (intent === "remove") {
     await db.remove("role_assignments", String(form.get("assignmentId") ?? ""), ctx.now);
@@ -156,8 +232,31 @@ export async function action({ request, context }: Route.ActionArgs) {
   return { ok: true, invited: email };
 }
 
+/** What the Connect round trip told us, in words rather than a query string. */
+const CONNECT_NOTICES: Record<string, { tone: "good" | "warn"; text: string }> = {
+  linked: { tone: "good", text: "Stripe is linked and ready to take payments." },
+  pending: {
+    tone: "warn",
+    text:
+      "Stripe is linked, but it isn't accepting charges yet — there's usually a step left " +
+      "unfinished in Stripe's own onboarding. Finish it there, then press Check again.",
+  },
+  cancelled: { tone: "warn", text: "No harm done — nothing was linked." },
+  expired: { tone: "warn", text: "That took a while and the link expired. Start again when you're ready." },
+  incomplete: { tone: "warn", text: "Stripe sent us back without everything we needed. Try once more." },
+  wrong_account: {
+    tone: "warn",
+    text: "You finished that in a different Sodalitas account from the one that started it. Sign in as the same person and try again.",
+  },
+  not_allowed: { tone: "warn", text: "Your office doesn't include setting up payments." },
+  failed: { tone: "warn", text: "Stripe declined to finish linking. Nothing was changed." },
+};
+
 export default function Settings({ loaderData, actionData }: Route.ComponentProps) {
-  const { club, assignments, people, canAssign, defaultEnd } = loaderData;
+  const {
+    club, assignments, people, canAssign, defaultEnd,
+    payments, canManagePayments, connectAvailable, paymentsNotice,
+  } = loaderData;
 
   if (!club) {
     return (
@@ -188,6 +287,149 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
           /club/{club.slug}
         </Link>
       </Card>
+
+      {payments && canManagePayments && (
+        <Card className="mb-8">
+          <h2 className="font-medium text-ink-900 dark:text-ink-100">Taking money online</h2>
+          {/* The sentence a treasurer needs before they'll link anything. */}
+          <p className="mt-1 text-sm text-pretty text-ink-600 dark:text-ink-400">
+            The club connects its own Stripe account, and dues and donations go straight into the
+            club's bank. We never hold your money and we take no cut of it — Sodalitas is paid for
+            by the subscription, not by a slice of your dues.
+          </p>
+
+          {paymentsNotice && CONNECT_NOTICES[paymentsNotice] && (
+            <p
+              className={`mt-4 rounded-lg px-4 py-3 text-sm ${
+                CONNECT_NOTICES[paymentsNotice]!.tone === "good"
+                  ? "bg-steady-500/12 text-steady-500"
+                  : "bg-watch-500/12 text-watch-500"
+              }`}
+            >
+              {CONNECT_NOTICES[paymentsNotice]!.text}
+            </p>
+          )}
+
+          {!payments.platformReady ? (
+            <p className="mt-4 rounded-lg bg-ink-500/8 px-4 py-3 text-sm text-ink-600 dark:text-ink-400">
+              Online payment isn't switched on for this installation yet. Everything else about
+              dues works without it — billing, cheques, cash, waivers and the arrears report are
+              all unaffected.
+            </p>
+          ) : !payments.accountId ? (
+            <div className="mt-4">
+              {connectAvailable ? (
+                <ButtonLink to={`/api/stripe/connect/start?club=${club.id}`} external>
+                  Link the club's Stripe account
+                </ButtonLink>
+              ) : (
+                <p className="text-sm text-ink-600 dark:text-ink-400">
+                  Linking isn't available on this installation yet.
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Chip tone={payments.clubReady ? "steady" : "watch"}>
+                  {payments.clubReady ? "Ready" : "Not taking charges yet"}
+                </Chip>
+                <code className="text-xs text-ink-500">{payments.accountId}</code>
+                <Form method="post">
+                  <input type="hidden" name="intent" value="payments-refresh" />
+                  <Button type="submit" variant="quiet">
+                    Check again
+                  </Button>
+                </Form>
+                <Form method="post">
+                  <input type="hidden" name="intent" value="payments-unlink" />
+                  <Button type="submit" variant="quiet">
+                    Unlink
+                  </Button>
+                </Form>
+              </div>
+              {payments.blockedBecause && (
+                <p className="mt-3 text-sm text-watch-500">{payments.blockedBecause}</p>
+              )}
+
+              <Form method="post" className="mt-6 space-y-4">
+                <input type="hidden" name="intent" value="payments" />
+                <label className="flex items-start gap-2.5 text-sm text-ink-700 dark:text-ink-300">
+                  <input
+                    type="checkbox"
+                    name="duesOnline"
+                    defaultChecked={payments.duesOnline}
+                    className="mt-0.5 rounded border-ink-300"
+                  />
+                  <span>Let members pay their dues by card</span>
+                </label>
+                <label className="flex items-start gap-2.5 text-sm text-ink-700 dark:text-ink-300">
+                  <input
+                    type="checkbox"
+                    name="donationsEnabled"
+                    defaultChecked={payments.donationsEnabled}
+                    className="mt-0.5 rounded border-ink-300"
+                  />
+                  <span>
+                    Show a Donate button on the club's public page
+                    <span className="block text-xs text-ink-500">
+                      Visible to anyone who finds the page. Gifts land in the club's Stripe account.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2.5 text-sm text-ink-700 dark:text-ink-300">
+                  <input
+                    type="checkbox"
+                    name="coverFeeDefault"
+                    defaultChecked={payments.coverFeeDefault}
+                    className="mt-0.5 rounded border-ink-300"
+                  />
+                  <span>
+                    Offer to let payers cover the card fee, ticked by default
+                    <span className="block text-xs text-ink-500">
+                      Most people say yes when asked plainly. Left unticked it's a quiet 3% off
+                      everything the club raises.
+                    </span>
+                  </span>
+                </label>
+
+                <Field
+                  label="Suggested amounts"
+                  name="suggestedAmounts"
+                  hint="Comma separated, in dollars. Suggestions only — a donor can type anything."
+                >
+                  <Input
+                    id="suggestedAmounts"
+                    name="suggestedAmounts"
+                    defaultValue={payments.suggestedAmounts
+                      .map((c) => (c / 100).toFixed(0))
+                      .join(", ")}
+                  />
+                </Field>
+
+                <Field
+                  label="What the money is for"
+                  name="donationBlurb"
+                  hint="One or two sentences on the donation form. Concrete beats worthy."
+                >
+                  <Textarea
+                    id="donationBlurb"
+                    name="donationBlurb"
+                    rows={2}
+                    defaultValue={payments.donationBlurb ?? ""}
+                    placeholder="Every gift goes to the shelter meals programme and the two scholarships we fund each June."
+                  />
+                </Field>
+
+                {actionData && "savedPayments" in actionData && actionData.savedPayments && (
+                  <p className="text-sm text-steady-500">Saved.</p>
+                )}
+                <Button type="submit">Save payment settings</Button>
+              </Form>
+            </>
+          )}
+        </Card>
+      )}
 
       {/* ── Officers ── */}
       <h2 className="pb-3 font-medium text-ink-900 dark:text-ink-100">Officers</h2>

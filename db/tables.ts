@@ -34,6 +34,8 @@ export const TENANT_TABLES = [
   "tasks",
   "dues_invoices",
   "payments",
+  "payment_settings",
+  "checkout_sessions",
   "tags",
   "entity_tags",
   "files",
@@ -75,6 +77,8 @@ export const GLOBAL_TABLES = {
   communio_governance_flags: "Reviewed by group stewards across tenants.",
   // Operational.
   job_runs: "Cron health. No tenant dimension.",
+  webhook_events:
+    "Provider event ledger for idempotency. The event arrives before we know whose it is.",
   d1_migrations: "Wrangler's own migration ledger.",
 } as const;
 

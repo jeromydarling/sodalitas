@@ -31,6 +31,8 @@ export const ID_PREFIXES = {
   task: "tk",
   invoice: "iv",
   payment: "pm",
+  paymentSettings: "ps",
+  checkout: "ck",
   tag: "tg",
   entityTag: "et",
   file: "fl",

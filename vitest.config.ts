@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["{app,worker,db,domain,content,ai,emails}/**/*.{test,spec}.{ts,tsx}"],
+    include: ["{app,worker,db,domain,content,ai,emails,payments}/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["reference/**", "node_modules/**", "build/**"],
   },
   resolve: {
@@ -15,6 +15,7 @@ export default defineConfig({
       "@content": new URL("./content", import.meta.url).pathname,
       "@emails": new URL("./emails", import.meta.url).pathname,
       "@ai": new URL("./ai", import.meta.url).pathname,
+      "@payments": new URL("./payments", import.meta.url).pathname,
     },
   },
 });

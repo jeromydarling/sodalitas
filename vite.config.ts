@@ -18,6 +18,7 @@ export default defineConfig({
       "@content": new URL("./content", import.meta.url).pathname,
       "@emails": new URL("./emails", import.meta.url).pathname,
       "@ai": new URL("./ai", import.meta.url).pathname,
+      "@payments": new URL("./payments", import.meta.url).pathname,
     },
   },
   build: {

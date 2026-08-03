@@ -17,6 +17,11 @@ export default [
   // ── Public club pages (the ClubRunner counter) ────────────────────────────
   route("club/:clubSlug", "routes/public-club/index.tsx"),
 
+  // ── Where Stripe sends a payer back to. No layout: these are the last thing
+  //    somebody sees after handing over money, and they load in one hop.
+  route("pay/thanks", "routes/pay/thanks.tsx"),
+  route("pay/cancelled", "routes/pay/cancelled.tsx"),
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   route("signup", "routes/auth/signup.tsx"),
   route("login", "routes/auth/login.tsx"),

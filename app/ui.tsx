@@ -87,19 +87,37 @@ export function Button({
   return <button {...props} className={`${BUTTON_BASE} ${VARIANTS[variant]} ${className}`} />;
 }
 
+/**
+ * A link styled as a button.
+ *
+ * `external` opts out of client-side routing — needed for anything the router
+ * can't own: an endpoint that redirects off-site, a file download. Prefetching
+ * one of those would fire the request early and, for a redirect that mints a
+ * one-time token, spend it before the person ever clicked.
+ */
 export function ButtonLink({
   to,
   variant = "primary",
   className = "",
+  external = false,
   children,
 }: {
   to: string;
   variant?: ButtonVariant;
   className?: string;
+  external?: boolean;
   children: ReactNode;
 }) {
+  const cls = `${BUTTON_BASE} ${VARIANTS[variant]} ${className}`;
+  if (external) {
+    return (
+      <a href={to} className={cls}>
+        {children}
+      </a>
+    );
+  }
   return (
-    <Link to={to} prefetch="intent" className={`${BUTTON_BASE} ${VARIANTS[variant]} ${className}`}>
+    <Link to={to} prefetch="intent" className={cls}>
       {children}
     </Link>
   );

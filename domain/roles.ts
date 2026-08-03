@@ -131,7 +131,14 @@ export const ROLES: Record<string, RoleDef> = {
       "people.delete", "people.export",
       "membership.approve", "membership.terminate",
       "committees.write", "projects.write",
-      "dues.read", "payments.read",
+      // Money as well. The blurb says full authority and means it — and an
+      // officer who holds roles.assign can appoint themselves treasurer in ten
+      // seconds, so withholding these buys no separation of duties, only a
+      // dead end for the many small clubs where the president is setting
+      // everything up before a treasurer exists. The real control is the
+      // append-only interaction and audit log, which records who did what.
+      "dues.read", "dues.write",
+      "payments.read", "payments.write", "payments.settings",
       "email.send", "email.send_all", "email.templates",
       "notes.read_all",
       "public_page.edit",
@@ -252,7 +259,11 @@ export const ROLES: Record<string, RoleDef> = {
       ...OFFICER_BASE,
       "people.delete", "people.export",
       "committees.write", "projects.write",
-      "dues.read", "dues.write", "payments.read", "payments.write",
+      // Including payments.settings: linking the club's Stripe account is
+      // precisely "keeping the system running", and it is configuration rather
+      // than a way to move anybody's money.
+      "dues.read", "dues.write",
+      "payments.read", "payments.write", "payments.settings",
       "email.send", "email.send_all", "email.templates",
       "import.run", "import.commit",
       "public_page.edit",

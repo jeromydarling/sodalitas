@@ -42,6 +42,13 @@ export const RULES = {
   joinForm: { windowSec: 3600, max: 8 },
   /** Public contact form, per IP. */
   contactForm: { windowSec: 3600, max: 5 },
+  /**
+   * Public donation checkout, per IP per club. Tighter than it looks generous,
+   * because an unthrottled checkout endpoint is a free card-testing service
+   * running on a club's own Stripe account — and it is the club, not us, that
+   * would wear the disputes.
+   */
+  donate: { windowSec: 3600, max: 10 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RuleName = keyof typeof RULES;

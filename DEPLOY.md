@@ -97,10 +97,11 @@ npx wrangler secret put IP_HASH_SECRET     # salts hashed IPs
 npx wrangler secret put ANTHROPIC_API_KEY  # draft recaps and follow-ups
 npx wrangler secret put RESEND_API_KEY     # outbound mail
 npx wrangler secret put STRIPE_SECRET_KEY  # dues and donations
+npx wrangler secret put STRIPE_CONNECT_CLIENT_ID
 npx wrangler secret put STRIPE_WEBHOOK_SECRET
 ```
 
-Two of those deserve a note:
+Three of those deserve a note:
 
 **`ADMIN_TOKEN`** guards `/api/ops/*`. While it is unset those endpoints are
 reachable only from localhost, so a deployed Worker without it exposes nothing
@@ -110,6 +111,30 @@ reachable only from localhost, so a deployed Worker without it exposes nothing
 Without it a development default is used. Hashing the entire IPv4 space takes
 about a second, so an unsalted "anonymised" IP is not anonymous — set a long
 random value in production.
+
+**The three Stripe values** work together and each does a different job.
+`STRIPE_SECRET_KEY` lets us call the API at all. `STRIPE_CONNECT_CLIENT_ID`
+(`ca_…`, from the Connect settings page) is what a treasurer is sent to when
+they link the club's own Stripe account — without it the Link button doesn't
+appear, and a club with an already-linked account keeps working.
+`STRIPE_WEBHOOK_SECRET` is the load-bearing one: a signed webhook is the *only*
+thing in the product that marks money as received, and without a secret to
+verify against, the endpoint rejects every delivery rather than trusting an
+unsigned body. Point the Stripe endpoint at `/api/stripe/webhook` and subscribe
+it to `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+`checkout.session.expired` and `charge.refunded` — **including events from
+connected accounts**, since every charge happens on a club's own account.
+
+## Payments, and whose money it is
+
+Sodalitas never holds a club's money. Each club connects its own Stripe account
+through Connect, charges are created directly on that account, and we take no
+application fee — the product is paid for by subscription, not by a slice of
+anybody's dues. Dues and donations land in the club's own bank account, in the
+club's own Stripe dashboard, under the club's own tax identity.
+
+That is worth saying out loud to a treasurer, and it also keeps us clear of
+holding charitable funds, which is not a place a small SaaS belongs.
 
 ## Cron
 

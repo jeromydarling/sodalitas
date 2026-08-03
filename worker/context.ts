@@ -35,6 +35,8 @@ export interface Env {
   ANTHROPIC_API_KEY?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
+  /** Connect OAuth client id (ca_…). Without it, clubs can't link an account. */
+  STRIPE_CONNECT_CLIENT_ID?: string;
   RESEND_API_KEY?: string;
   IP_HASH_SECRET?: string;
   /** Guards /api/ops/*. Unset means those endpoints are localhost-only. */

@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/**
+ * Sodalitas looks like a tool, not a brochure. Dense where information is
+ * dense, calm everywhere else. Closer to Linear than to association software.
+ *
+ * Rotary's blue and gold are the anchor without being worn as a costume — a
+ * club's own identity should sit on top of this, not compete with it.
+ */
+@theme {
+  --color-ink-50:  oklch(0.98 0.005 250);
+  --color-ink-100: oklch(0.95 0.008 250);
+  --color-ink-200: oklch(0.89 0.010 250);
+  --color-ink-300: oklch(0.78 0.012 250);
+  --color-ink-400: oklch(0.63 0.014 250);
+  --color-ink-500: oklch(0.52 0.016 250);
+  --color-ink-600: oklch(0.42 0.018 250);
+  --color-ink-700: oklch(0.34 0.020 250);
+  --color-ink-800: oklch(0.24 0.020 250);
+  --color-ink-900: oklch(0.16 0.018 250);
+  --color-ink-950: oklch(0.11 0.016 250);
+
+  /* Rotary azure, desaturated enough to live behind text all day. */
+  --color-brand-50:  oklch(0.97 0.020 250);
+  --color-brand-100: oklch(0.93 0.045 250);
+  --color-brand-300: oklch(0.75 0.110 250);
+  --color-brand-500: oklch(0.55 0.160 250);
+  --color-brand-600: oklch(0.48 0.165 250);
+  --color-brand-700: oklch(0.40 0.150 250);
+
+  /* Rotary gold, reserved for accents. Never for body text. */
+  --color-gold-300: oklch(0.86 0.110 85);
+  --color-gold-500: oklch(0.75 0.140 85);
+  --color-gold-600: oklch(0.66 0.135 85);
+
+  /* Status. Muted on purpose — a dashboard of alarms stops being read. */
+  --color-steady-500: oklch(0.62 0.110 155);
+  --color-watch-500:  oklch(0.75 0.120 75);
+  --color-risk-500:   oklch(0.58 0.150 25);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-ink-50);
+    color: var(--color-ink-800);
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body {
+      background-color: var(--color-ink-950);
+      color: var(--color-ink-200);
+    }
+  }
+
+  /* Focus is always visible. Club officers turn over every year and a good
+     share of them navigate by keyboard; hiding the ring to look tidy makes
+     the product unusable for them. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

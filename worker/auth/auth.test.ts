@@ -13,6 +13,7 @@ import { checkRateLimit, recordFailure, clearFailures, checkAll, RULES } from ".
 import {
   createSession, readSession, destroySession, destroyAllUserSessions,
   setSessionTenant, sessionCookie, clearCookie, readCookie, SESSION_COOKIE,
+  shouldUseSecureCookie,
 } from "./session";
 import { issueMagicLink, consumeMagicLink, safeRedirect, magicLinkUrl } from "./magic";
 
@@ -385,6 +386,21 @@ describe("session cookie", () => {
 
   it("clears with Max-Age=0", () => {
     expect(clearCookie()).toContain("Max-Age=0");
+  });
+
+  // Derived from the request, not from config: `wrangler dev` serves the
+  // production vars block, so APP_ENV reads "production" on localhost. A Secure
+  // cookie over plain http is dropped silently, and "sign-in works but I'm
+  // still logged out" is an hour of debugging to trace back to one flag.
+  it("decides Secure from the request rather than an env var", () => {
+    const req = (url: string) => new Request(url);
+    expect(shouldUseSecureCookie(req("http://localhost:5173/login"))).toBe(false);
+    expect(shouldUseSecureCookie(req("http://127.0.0.1:8787/login"))).toBe(false);
+    expect(shouldUseSecureCookie(req("https://localhost:5173/login"))).toBe(true);
+    expect(shouldUseSecureCookie(req("https://sodalitas.app/login"))).toBe(true);
+    // A non-loopback host over plain http is somebody's staging box, and it
+    // still gets the stricter flag.
+    expect(shouldUseSecureCookie(req("http://staging.internal/login"))).toBe(true);
   });
 
   it("reads one cookie out of a header without matching a prefix", () => {

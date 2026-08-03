@@ -1,0 +1,29 @@
+# Local development secrets. Copy to `.dev.vars` (git-ignored) and fill in
+# only what you actually want to exercise.
+#
+# Every one of these is optional. The app runs end to end without a single one:
+# AI features show a friendly note, mail is logged to the console instead of
+# sent, and payments are hidden. You should be able to use Sodalitas fully
+# before adding any of them.
+#
+# In production these are Worker secrets — `wrangler secret put NAME` — never
+# files, never committed, never pasted into chat.
+
+# Drafting meeting recaps and follow-up notes. Without it, those buttons
+# explain that AI isn't configured and everything else works.
+# ANTHROPIC_API_KEY=
+
+# Dues and donations. Without it, payment settings are hidden and dues can
+# still be recorded and marked paid by hand.
+# STRIPE_SECRET_KEY=
+# STRIPE_WEBHOOK_SECRET=
+
+# Outbound mail. Without it, every message is written to email_messages with
+# status 'logged_only' and printed to the console — including sign-in links,
+# so you can log in locally with no mail provider at all.
+# RESEND_API_KEY=
+
+# Salt for hashing IPs in rate-limit keys and audit rows. Any long random
+# string. Without it, a development default is used — set a real one in
+# production so stored hashes can't be reversed by hashing the IPv4 space.
+# IP_HASH_SECRET=

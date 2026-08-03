@@ -198,6 +198,28 @@ export interface CookieOptions {
   secure?: boolean;
 }
 
+/**
+ * Should this response's cookie carry `Secure`?
+ *
+ * Derived from the request rather than from a config var, because config lies:
+ * `wrangler dev` serves the production `vars` block, so `APP_ENV` reads
+ * "production" on localhost. A `Secure` cookie over plain http is silently
+ * dropped by the browser, and the symptom — "sign-in appears to work but I'm
+ * still logged out" — takes an hour to trace back to a flag.
+ *
+ * Everything that isn't http on a loopback host gets `Secure`.
+ */
+export function shouldUseSecureCookie(request: Request): boolean {
+  try {
+    const url = new URL(request.url);
+    if (url.protocol === "https:") return true;
+    return !(url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]");
+  } catch {
+    // Unparseable URL: assume production and keep the stricter flag.
+    return true;
+  }
+}
+
 export function sessionCookie(token: string, opts: CookieOptions = {}): string {
   const parts = [
     `${SESSION_COOKIE}=${token}`,

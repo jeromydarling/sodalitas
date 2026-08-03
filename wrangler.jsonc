@@ -53,9 +53,19 @@
     }
   ],
 
-  "images": { "binding": "IMAGES" },
-
-  "ai": { "binding": "AI" },
+  // The Images and Workers AI bindings are deliberately NOT declared here.
+  //
+  // Both proxy to Cloudflare even in local development, so declaring them makes
+  // `npm run dev` require a CLOUDFLARE_API_TOKEN — which means a new
+  // contributor cannot run the app at all until someone provisions them an
+  // account. That trade is not worth it for two optional features.
+  //
+  // Anthropic over HTTPS is the default AI provider (see ai/provider.ts), and
+  // it degrades to a friendly note when its key is absent. To enable Workers AI
+  // as the cheap fallback tier, or on-the-fly image transforms, uncomment:
+  //
+  //   "ai": { "binding": "AI" },
+  //   "images": { "binding": "IMAGES" },
 
   // Cron triggers. Times are UTC.
   //   05:00 daily  — club health snapshots (nightly, idempotent)

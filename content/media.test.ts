@@ -169,29 +169,43 @@ describe("the direction on people", () => {
       !/no people|nobody in frame|nobody anywhere/i.test(m.prompt),
   );
 
-  it("says who is in the room wherever a group appears", () => {
-    // The first set left it unsaid and the model chose: a sparse group of
-    // elderly people in a church hall, on the front page of a product about
-    // clubs not dying. Where a group is described at all, the age range is
-    // now named.
-    expect(peopled.length).toBeGreaterThan(2);
+  /**
+   * The three ways a prompt can put a room full of people on the page without
+   * a face being rendered.
+   *
+   * Stated as alternatives rather than as one required technique, because the
+   * first version of this test demanded motion blur specifically — and then
+   * blocked the fix that finally worked. Motion blur is a post-condition the
+   * model can decline to apply; three runs proved it. Backlighting is
+   * physics: put the camera between the room and the windows and every figure
+   * is a silhouette whether the model cooperates or not.
+   */
+  const FACE_PROOF = /motion blur|softened|mid-movement|blurred|silhouette|contre-jour|backlit|out of focus/i;
 
-    const vague = peopled
+  it("makes faces unrenderable wherever people appear", () => {
+    // This is the actual requirement. A face this model renders is a face
+    // that looks generated, and — left to its own devices — it is also always
+    // the same face: elderly, white, in a church hall, on the front page of a
+    // product about clubs not dying.
+    expect(peopled.length).toBeGreaterThan(2);
+    for (const slot of peopled) {
+      expect(slot.prompt, slot.key).toMatch(FACE_PROOF);
+    }
+  });
+
+  it("says who is in the room wherever a face could still be read", () => {
+    // Only where the technique leaves people legible enough to have an age.
+    // A silhouette hasn't got one, which is most of why it's the better
+    // answer — the instruction can't be ignored if there is nothing to
+    // ignore it with.
+    const legible = peopled.filter((m) => !/silhouette|contre-jour|backlit/i.test(m.prompt));
+    const vague = legible
       .filter((m) => !/mixed[- ]age|thirties|mixed group/i.test(m.prompt))
       .map((m) => m.key);
 
     expect(vague, `these describe a group without saying who's in it: ${vague.join(", ")}`).toEqual(
       [],
     );
-  });
-
-  it("keeps people in motion rather than posed", () => {
-    // The only way a room full of people can appear without a face being
-    // rendered. If this stops being true, either the faces are back or the
-    // rooms have gone empty again — and both were the original failure.
-    for (const slot of peopled) {
-      expect(slot.prompt, slot.key).toMatch(/motion blur|softened|mid-movement|blurred/i);
-    }
   });
 
   it("does not let the homepage be a set of empty rooms", () => {

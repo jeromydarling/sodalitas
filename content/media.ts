@@ -138,15 +138,23 @@ export const MEDIA: MediaSlot[] = [
   // the opposite of it.
   {
     key: "home-hero",
-    // The one that has to work hardest. A long exposure is doing two jobs:
-    // it makes a room of people read as warmth rather than as individuals,
-    // and it means no face exists to be rendered badly or stereotyped.
+    // The one that has to work hardest, and the one that took four rounds.
+    //
+    // "Long exposure, every figure softened into motion blur, mixed ages"
+    // produced a sharply rendered room of grey-haired people three times.
+    // Motion blur is a post-condition — the model can simply decline to apply
+    // it — and an age range is a request it can ignore. Backlighting is
+    // neither. Put the camera between the room and the windows and physics
+    // does the work: every figure is a dark shape against bright glass, the
+    // room reads as full and warm, and there is no face, no age and no race
+    // for the model to get wrong. It is also a better photograph, and at 18%
+    // behind a headline it reads as texture rather than as people.
     prompt:
-      "Inside a busy community hall at lunchtime, photographed on a long exposure from the " +
-      "back of the room. Twenty or thirty people of mixed ages, thirties through seventies, " +
-      "around round tables — every figure softened into motion blur, nobody still, the room " +
-      "clearly full. Tall windows throwing bright daylight across the tables. Warm, busy, " +
-      "slightly overexposed.",
+      "Inside a community hall packed for a lunch meeting, shot straight into a wall of tall " +
+      "bright windows — hard contre-jour, heavily backlit. Everyone in the room is a dark " +
+      "silhouette against the blown-out white glass: thirty or forty people at round tables, " +
+      "leaning in, arms up, mid-conversation, not one of them lit from the front. Dust and " +
+      "haze in the light. The room is unmistakably full.",
     alt: "",
     aspect: "21/9",
     treatment: "backdrop",
@@ -205,11 +213,14 @@ export const MEDIA: MediaSlot[] = [
     key: "retention-hero",
     // The one image in the set that is *supposed* to be about absence, and
     // the only place emptiness is the argument rather than an accident.
+    // Three runs of "one used place among many" produced a pleasant, fully
+    // laid table with no story in it — a contrast across eight place settings
+    // is more bookkeeping than a diffusion model will do. One chair, alone,
+    // is a picture it can make.
     prompt:
-      "A round banquet table after lunch. Every place around it has been used — crumpled " +
-      "napkins, drained glasses, chairs pushed back at angles — except one, where the napkin " +
-      "is still folded, the glass still full and the cutlery untouched. The empty setting is " +
-      "in the foreground and clearly the subject. Nobody in frame, late afternoon light.",
+      "A single empty chair standing alone in the middle of a large emptied function room, " +
+      "every other chair stacked against the far wall. Bare floor, late afternoon light " +
+      "across it from one window. Nobody in frame.",
     alt: "One empty place at a table where everyone else has been sitting",
     aspect: "3/2",
     treatment: "plate",
@@ -225,12 +236,14 @@ export const MEDIA: MediaSlot[] = [
     // So the subject changed to the object instead of the people. A tray of
     // blank badges by the door is what a club that expects visitors looks
     // like, and it says it without a single person in frame.
+    // Name badges came back as a dark binder — too small and too specific an
+    // object. A guest book is large, obvious, and something diffusion models
+    // render well: an open book with ruled pages and a pen.
     prompt:
-      "Close on a tray of blank white adhesive name badges and a marker pen on a small table " +
-      "just inside a doorway, one badge already peeled from the backing sheet. All the badges " +
-      "are entirely blank with no writing on them. Beyond the table, a room out of focus and " +
-      "full of warm light. Nobody in frame.",
-    alt: "Blank name badges laid out by the door for visitors",
+      "An open visitors' book on a table just inside a doorway, its ruled pages completely " +
+      "blank, a pen resting in the gutter. Warm light from the room beyond, thrown out of " +
+      "focus. Nobody in frame.",
+    alt: "An open visitors' book waiting by the door",
     aspect: "4/3",
     treatment: "plate",
     usedOn: "/features/guests",

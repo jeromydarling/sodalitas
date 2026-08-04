@@ -3,6 +3,7 @@ import type { Route } from "./+types/feature-detail";
 import { featureBySlug, FEATURES } from "@content/features";
 import { Icon, Reveal, Eyebrow } from "~/brand";
 import { Media, hasMedia } from "~/media";
+import { SignalsScreen, RosterScreen, MeetingScreen, DuesScreen, HealthScreen, CommitteeScreen } from "~/screens";
 import { marketingMeta, breadcrumbSchema, jsonLd } from "~/seo";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -31,10 +32,23 @@ export function loader({ params }: Route.LoaderArgs) {
   };
 }
 
+/** The miniature that belongs beside each feature, where one exists. */
+const SCREENS = {
+  signals: SignalsScreen,
+  roster: RosterScreen,
+  meeting: MeetingScreen,
+  dues: DuesScreen,
+  health: HealthScreen,
+  committee: CommitteeScreen,
+} as const;
+
 export default function FeatureDetail({ loaderData }: Route.ComponentProps) {
   const { feature, prev, next } = loaderData;
   const Glyph = Icon[feature.icon];
-  const showMedia = feature.media ? hasMedia(feature.media) : false;
+  const Screen = feature.screen ? SCREENS[feature.screen] : null;
+  // The screen is the better hero when there is one: it shows the actual thing
+  // rather than a photograph standing in for it.
+  const showMedia = !Screen && feature.media ? hasMedia(feature.media) : false;
 
   return (
     <article>
@@ -64,8 +78,12 @@ export default function FeatureDetail({ loaderData }: Route.ComponentProps) {
 
           {/* Two columns only when there is a picture. With no image the prose
               takes a comfortable measure instead of a half-empty grid. */}
-          <div className={showMedia ? "mt-8 grid items-center gap-12 lg:grid-cols-2" : "mt-8"}>
-            <div className={showMedia ? "" : "max-w-3xl"}>
+          <div
+            className={
+              Screen || showMedia ? "mt-8 grid items-center gap-12 lg:grid-cols-2" : "mt-8"
+            }
+          >
+            <div className={Screen || showMedia ? "" : "max-w-3xl"}>
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-500">
                 <Glyph width="1.6em" height="1.6em" />
               </span>
@@ -77,7 +95,9 @@ export default function FeatureDetail({ loaderData }: Route.ComponentProps) {
                 {feature.summary}
               </p>
             </div>
-            {showMedia && feature.media && <Media slot={feature.media} priority />}
+            {Screen ? <Screen /> : showMedia && feature.media ? (
+              <Media slot={feature.media} priority />
+            ) : null}
           </div>
         </div>
       </header>

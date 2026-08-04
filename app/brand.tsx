@@ -1,17 +1,26 @@
 /**
  * brand.tsx — the logo, the icon set, and the motion primitive.
  *
- * Everything here is hand-authored SVG. No icon package: a dependency that
- * ships a thousand glyphs to render the twenty we use is a poor trade on a
- * Worker, where the bundle is the cold start. These are drawn on the same 24px
- * grid with the same 1.75 stroke, so they sit together without looking
- * assembled from three different sets.
+ * Icons are Lucide, mapped to names that mean something in this product rather
+ * than something in a glyph catalogue: `Icon.Drift`, not `Icon.TrendingDown`.
+ * Call sites then read as what they are, and swapping the underlying glyph is
+ * a one-line change here instead of a search across forty files.
  *
- * All of it inherits `currentColor` and sizes from `em`, so an icon beside text
- * matches that text in both themes without being told anything.
+ * Lucide is tree-shaken per import, so the bundle carries the two dozen we
+ * actually use rather than the whole set. Every one is wrapped so it inherits
+ * `currentColor` and sizes in `em` — an icon beside text matches that text, in
+ * both themes, without being told anything.
+ *
+ * The logo below stays hand-drawn. It's the one mark that has to be ours.
  */
 
-import type { ReactNode, SVGProps } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
+import {
+  TrendingDown, Users, UserPlus, CalendarDays, Repeat, CreditCard, HandHeart,
+  Network, Globe2, Mail, Upload, ShieldCheck, Check, X, Minus, ArrowRight,
+  BookOpen, Plug, Sparkles, Clock, Menu as MenuIcon, Building2, ClipboardList,
+  ChartNoAxesColumn, Search, Bell, Settings2, Quote,
+} from "lucide-react";
 
 // ── Logo ──────────────────────────────────────────────────────────────────────
 
@@ -64,169 +73,65 @@ export function Wordmark({ className = "" }: { className?: string }) {
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
-type IconProps = SVGProps<SVGSVGElement> & { title?: string };
+type LucideLike = ComponentType<SVGProps<SVGSVGElement> & { size?: string | number }>;
+export type IconProps = SVGProps<SVGSVGElement> & { title?: string };
 
-function Svg({ children, title, ...props }: IconProps & { children: ReactNode }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
+/**
+ * Wrap a Lucide glyph so it behaves like text.
+ *
+ * Sized in `em` rather than pixels, so an icon in a heading grows with the
+ * heading. Decorative by default — an icon sitting beside its own label and
+ * read aloud twice is worse than one that isn't read at all — and given a
+ * `title` only when it carries meaning nothing else on screen does.
+ */
+function icon(Glyph: LucideLike, name: string) {
+  const Wrapped = ({ title, ...props }: IconProps) => (
+    <Glyph
       width="1.25em"
       height="1.25em"
-      fill="none"
-      stroke="currentColor"
       strokeWidth={1.75}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      // Decorative by default. An icon beside its own label read aloud twice is
-      // worse than one that isn't read at all.
       aria-hidden={title ? undefined : true}
       role={title ? "img" : undefined}
+      aria-label={title}
       {...props}
-    >
-      {title && <title>{title}</title>}
-      {children}
-    </svg>
+    />
   );
+  Wrapped.displayName = `Icon.${name}`;
+  return Wrapped;
 }
 
 export const Icon = {
-  /** Someone drifting — the falling line that is the whole product. */
-  Drift: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M3 6l5 5 4-3 4 4 5-7" />
-      <circle cx="21" cy="5" r="1.4" fill="currentColor" stroke="none" />
-      <path d="M3 20h18" opacity={0.35} />
-    </Svg>
-  ),
-  People: (p: IconProps) => (
-    <Svg {...p}>
-      <circle cx="9" cy="8" r="3.2" />
-      <path d="M3 20a6 6 0 0 1 12 0" />
-      <path d="M16 5.5a3.2 3.2 0 0 1 0 6.2" opacity={0.6} />
-      <path d="M17.5 14.4A6 6 0 0 1 21 20" opacity={0.6} />
-    </Svg>
-  ),
-  Guest: (p: IconProps) => (
-    <Svg {...p}>
-      <circle cx="10" cy="8" r="3.2" />
-      <path d="M4 20a6 6 0 0 1 12 0" />
-      <path d="M19 7v6M22 10h-6" />
-    </Svg>
-  ),
-  Calendar: (p: IconProps) => (
-    <Svg {...p}>
-      <rect x="3" y="5" width="18" height="16" rx="2.5" />
-      <path d="M3 10h18M8 3v4M16 3v4" />
-      <circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none" />
-    </Svg>
-  ),
-  Handover: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M4 8h11l-2.5-2.5M20 16H9l2.5 2.5" />
-      <circle cx="18.5" cy="8" r="2" />
-      <circle cx="5.5" cy="16" r="2" />
-    </Svg>
-  ),
-  Dues: (p: IconProps) => (
-    <Svg {...p}>
-      <rect x="2.5" y="6" width="19" height="12" rx="2.5" />
-      <path d="M2.5 10h19" />
-      <path d="M6.5 14.5h3" />
-    </Svg>
-  ),
-  Project: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.4 6.7 19.2l1.1-5.9L3.5 9.2l5.9-.8z" />
-    </Svg>
-  ),
-  Committee: (p: IconProps) => (
-    <Svg {...p}>
-      <circle cx="12" cy="6" r="2.6" />
-      <circle cx="5.5" cy="17" r="2.6" />
-      <circle cx="18.5" cy="17" r="2.6" />
-      <path d="M12 8.6v3.9M10 13.5L7.2 15M14 13.5l2.8 1.5" opacity={0.6} />
-    </Svg>
-  ),
-  District: (p: IconProps) => (
-    <Svg {...p}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18" />
-      <path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z" />
-    </Svg>
-  ),
-  Mail: (p: IconProps) => (
-    <Svg {...p}>
-      <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
-      <path d="M3.5 7.5l7.3 5a2 2 0 0 0 2.4 0l7.3-5" />
-    </Svg>
-  ),
-  Import: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M12 3v11m0 0l-3.5-3.5M12 14l3.5-3.5" />
-      <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-    </Svg>
-  ),
-  Shield: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M12 3l7.5 3v6c0 4.6-3.1 7.9-7.5 9.4C7.6 19.9 4.5 16.6 4.5 12V6z" />
-      <path d="M9.2 12.2l2 2 3.6-3.9" />
-    </Svg>
-  ),
-  Check: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M4.5 12.5l4.5 4.5L19.5 6.5" />
-    </Svg>
-  ),
-  Cross: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M6 6l12 12M18 6L6 18" />
-    </Svg>
-  ),
-  Dash: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M6 12h12" />
-    </Svg>
-  ),
-  Arrow: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M4 12h15m0 0l-5.5-5.5M19 12l-5.5 5.5" />
-    </Svg>
-  ),
-  Book: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M4 4.5h6a2.5 2.5 0 0 1 2 2.5v12a2 2 0 0 0-2-1.5H4z" />
-      <path d="M20 4.5h-6a2.5 2.5 0 0 0-2 2.5v12a2 2 0 0 1 2-1.5h6z" />
-    </Svg>
-  ),
-  Plug: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M9 3v5M15 3v5" />
-      <path d="M6.5 8h11v3a5.5 5.5 0 0 1-11 0z" />
-      <path d="M12 16.5V21" />
-    </Svg>
-  ),
-  Spark: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.8z" />
-      <path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" opacity={0.6} />
-    </Svg>
-  ),
-  Clock: (p: IconProps) => (
-    <Svg {...p}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v5.3l3.3 2" />
-    </Svg>
-  ),
-  Menu: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M4 7h16M4 12h16M4 17h16" />
-    </Svg>
-  ),
-  Close: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M6 6l12 12M18 6L6 18" />
-    </Svg>
-  ),
+  /** A member pulling away. The one this product exists for. */
+  Drift: icon(TrendingDown, "Drift"),
+  People: icon(Users, "People"),
+  Guest: icon(UserPlus, "Guest"),
+  Calendar: icon(CalendarDays, "Calendar"),
+  /** The July turnover. */
+  Handover: icon(Repeat, "Handover"),
+  Dues: icon(CreditCard, "Dues"),
+  Project: icon(HandHeart, "Project"),
+  Committee: icon(Network, "Committee"),
+  District: icon(Globe2, "District"),
+  Mail: icon(Mail, "Mail"),
+  Import: icon(Upload, "Import"),
+  Shield: icon(ShieldCheck, "Shield"),
+  Check: icon(Check, "Check"),
+  Cross: icon(X, "Cross"),
+  Dash: icon(Minus, "Dash"),
+  Arrow: icon(ArrowRight, "Arrow"),
+  Book: icon(BookOpen, "Book"),
+  Plug: icon(Plug, "Plug"),
+  Spark: icon(Sparkles, "Spark"),
+  Clock: icon(Clock, "Clock"),
+  Menu: icon(MenuIcon, "Menu"),
+  Close: icon(X, "Close"),
+  Club: icon(Building2, "Club"),
+  Task: icon(ClipboardList, "Task"),
+  Chart: icon(ChartNoAxesColumn, "Chart"),
+  Search: icon(Search, "Search"),
+  Bell: icon(Bell, "Bell"),
+  Settings: icon(Settings2, "Settings"),
+  Quote: icon(Quote, "Quote"),
 } as const;
 
 export type IconName = keyof typeof Icon;

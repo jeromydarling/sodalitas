@@ -24,6 +24,8 @@ export interface Feature {
   icon: IconName;
   /** Image slot key, if one exists for this feature. */
   media?: string;
+  /** A miniature of the real screen, from app/screens.tsx. */
+  screen?: "signals" | "roster" | "meeting" | "dues" | "health" | "committee";
   /** The case for it, two or three paragraphs. */
   body: string[];
   /** Concrete capabilities. Things, not adjectives. */
@@ -40,6 +42,7 @@ export const FEATURES: Feature[] = [
     summary:
       "Weekly, evidence-backed signals naming which members are pulling away and what one person should do about each.",
     icon: "Drift",
+    screen: "signals",
     body: [
       "Members rarely quit a Rotary club. They miss a meeting for an ordinary reason, then miss another because the first made it easier, and by the time anyone notices it is July and the roster is one shorter. What ends the membership is not a decision — it is the absence of a phone call in week three.",
       "Sodalitas scores engagement from what your club already writes down: attendance and its trend, involvement in committees and projects, dues, and the last time a human actually spoke to them. Every week it produces a short list of specific people, each with the evidence behind it and one suggested next step.",
@@ -61,6 +64,7 @@ export const FEATURES: Feature[] = [
     summary:
       "Every guest tracked from their first visit, so follow-up stops being whoever happened to remember.",
     icon: "Guest",
+    screen: "roster",
     media: "guests-spot",
     body: [
       "A visitor who came once and never heard back is the cheapest member a club will ever fail to recruit. They were in the room. They liked it enough to come. And then nothing happened, because the person who meant to call them was not the person who took their details.",
@@ -82,6 +86,7 @@ export const FEATURES: Feature[] = [
     summary:
       "Weekly meetings, speakers, attendance and makeups, recorded in a couple of minutes at the door.",
     icon: "Calendar",
+    screen: "meeting",
     body: [
       "Attendance is the single most-collected and least-used piece of data in Rotary. It gets taken carefully, typed into a spreadsheet, and read once a year. Meanwhile the useful part — who is trending away from a room they used to be in every week — is invisible because nobody has the time to compute it.",
       "Recording a meeting takes a minute: mark who came, note the speaker, done. Everything downstream — the trend, the signals, the club health score — comes from that one act, which is why it has to be fast enough that a secretary actually does it every week.",
@@ -102,6 +107,7 @@ export const FEATURES: Feature[] = [
     summary:
       "Committees with real rosters and service projects with hours, funds and participants — including who is on nothing at all.",
     icon: "Committee",
+    screen: "committee",
     media: "projects-spot",
     body: [
       "A member on a committee or a project has reasons to be there that survive a bad month. A member who only ever attends has one thread holding them, and it is thin. That makes committee membership one of the strongest retention signals a club has, and most clubs keep it in a document from two presidents ago.",
@@ -123,6 +129,7 @@ export const FEATURES: Feature[] = [
     summary:
       "Bill the club in one go, take cards or cheques, and treat arrears as the symptom they usually are.",
     icon: "Dues",
+    screen: "dues",
     body: [
       "Unpaid dues are usually a symptom rather than a cause. Somebody drifting away stops paying before they resign, which means the arrears report is often the last clear warning a club gets — and a club that responds by sending a third reminder has wasted it.",
       "Bill every current member for a period in one action, safe to run twice. Record cheques and cash by hand, or let members pay by card. Waiving is a first-class action rather than something a treasurer fakes by marking an invoice paid, so a club that quietly covers somebody's dues can record that honestly.",
@@ -164,6 +171,7 @@ export const FEATURES: Feature[] = [
     summary:
       "Club-level rollups for a governor, detail for assistant governors on their own clubs, and no way to quietly run a club that didn't ask.",
     icon: "District",
+    screen: "health",
     media: "district-spot",
     body: [
       "District software usually solves the district's problem and creates the club's. A governor gets a dashboard; a club gets the sense that head office is reading its mail. Both matter, and the second one is why clubs quietly stop entering data.",

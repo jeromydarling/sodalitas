@@ -15,10 +15,20 @@ export const brand = {
   name: "Sodalitas",
   /** Latin: a fellowship, a society, a company of friends. Rotary in one word. */
   meaning: "Latin for fellowship — a company of people who choose each other.",
-  tagline: "Club software that helps you keep the members you have.",
+  /**
+   * The lead.
+   *
+   * Deliberately the whole product rather than the clever part. Leading with
+   * retention made this read as a single-purpose add-on — a club shopping for
+   * club software would conclude we don't do the roster, the meetings or the
+   * dues, and stop reading before finding out we do. Retention is the reason to
+   * choose us; being a complete club system is the reason to consider us at
+   * all, and that has to come first.
+   */
+  tagline: "The operating system for a Rotary club.",
   domain: "sodalitas.jer-f84.workers.dev",
   positioning:
-    "Sodalitas is a club operating system for Rotary and Rotaract. It keeps the roster, runs the meetings, and tells you which members are drifting while there's still time to do something about it.",
+    "Sodalitas is a club operating system for Rotary and Rotaract. Roster, meetings and attendance, guests, committees, service projects, dues and a public club page — plus the part nobody else does: it tells you which members are drifting while there's still time to do something about it.",
 } as const;
 
 /**

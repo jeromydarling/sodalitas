@@ -5,6 +5,7 @@ import { FEATURES } from "@content/features";
 import { GUIDES } from "@content/guides";
 import { PLANS } from "@domain/pricing";
 import { Icon, Reveal, Eyebrow } from "~/brand";
+import { RosterScreen, MeetingScreen, DuesScreen, SignalsScreen, HealthScreen } from "~/screens";
 import { Media, hasMedia } from "~/media";
 import {
   marketingMeta, organizationSchema, softwareSchema, faqSchema, jsonLd,
@@ -21,7 +22,7 @@ export function meta(_: Route.MetaArgs) {
 const FAQS = [
   {
     q: "How is this different from ClubRunner or DACdb?",
-    a: "Those are good at being a database and a website. Sodalitas is built around one question they don't answer: which members are drifting, and what should someone do about it this week. ClubRunner still has a much more complete website builder than we do.",
+    a: "It covers the same ground — roster, meetings, committees, dues, a public page — and adds one thing neither of them does: a weekly list of which members are drifting and what to do about it. ClubRunner still has a much more complete website builder than we do.",
   },
   {
     q: "Can we move our data across?",
@@ -41,7 +42,7 @@ const FAQS = [
   },
 ];
 
-/** The icons that stand for each promise, in the order PROMISES declares them. */
+/** The icons standing for each promise, in the order PROMISES declares them. */
 const PROMISE_ICONS = {
   retention: "Drift",
   guests: "Guest",
@@ -50,9 +51,26 @@ const PROMISE_ICONS = {
   district: "District",
 } as const;
 
-export default function Home() {
-  const featured = FEATURES.slice(0, 6);
+/**
+ * What the club runs on, said as a list of jobs rather than of modules.
+ *
+ * This is the section that used to be missing. Leading with retention made the
+ * product read as an add-on, and a club shopping for club software concluded we
+ * don't do the roster — so the first thing on the page is now the full surface.
+ */
+const RUNS_ON = [
+  { icon: "People" as const, slug: "public-page", label: "The roster", body: "Members, classifications, history that outlives an officer." },
+  { icon: "Calendar" as const, slug: "meetings", label: "Meetings", body: "Speakers, attendance and makeups, marked in one pass." },
+  { icon: "Guest" as const, slug: "guests", label: "Guests", body: "Visitors tracked from the first week to induction." },
+  { icon: "Committee" as const, slug: "committees", label: "Committees", body: "Rosters, chairs, and who is on nothing at all." },
+  { icon: "Project" as const, slug: "committees", label: "Service projects", body: "Hours, funds raised, who actually turned up." },
+  { icon: "Dues" as const, slug: "dues", label: "Dues", body: "Bill the club in one go. Cash, cheque or card." },
+  { icon: "Mail" as const, slug: "public-page", label: "Club email", body: "Sent and recorded against the member it went to." },
+  { icon: "Club" as const, slug: "public-page", label: "Public page", body: "Meetings, projects and a join form, kept current for you." },
+  { icon: "District" as const, slug: "district", label: "Districts", body: "Rollups for a governor, without taking a club over." },
+];
 
+export default function Home() {
   return (
     <>
       <script
@@ -72,80 +90,155 @@ export default function Home() {
       />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(faqSchema(FAQS)) }} />
 
-      {/* ── Hero ── */}
+      {/* ── Hero: the whole product, with the screens right there ── */}
       <section className="aurora relative overflow-hidden border-b border-ink-200 dark:border-ink-800">
-        <div className="mx-auto max-w-6xl px-6 pt-20 pb-16 sm:pt-28 sm:pb-24">
-          <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white/70 px-3 py-1 text-xs font-medium text-ink-600 dark:border-ink-800 dark:bg-ink-900/70 dark:text-ink-400">
-              <Icon.Spark className="text-gold-500" width="1em" height="1em" />
-              For Rotary and Rotaract clubs and districts
-            </span>
-            <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance text-ink-900 sm:text-6xl dark:text-ink-50">
-              {brand.tagline}
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg text-pretty text-ink-600 sm:text-xl dark:text-ink-300">
-              Members rarely quit a Rotary club. They miss a meeting, then a month, and somebody
-              finally notices in July. Sodalitas keeps the roster and runs the meetings — and
-              tells you who's slipping away while there's still time to pick up the phone.
-            </p>
-            <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Link
-                to="/signup"
-                prefetch="intent"
-                className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-3 font-medium text-white transition-colors hover:bg-brand-700"
-              >
-                Start with your club
-                <Icon.Arrow />
-              </Link>
-              <Link
-                to="/demo"
-                prefetch="intent"
-                className="inline-flex items-center gap-2 rounded-lg border border-ink-300 bg-white/60 px-5 py-3 font-medium text-ink-800 transition-colors hover:border-brand-400 hover:text-brand-600 dark:border-ink-700 dark:bg-ink-900/60 dark:text-ink-200"
-              >
-                See a real club
-              </Link>
+        <div className="mx-auto max-w-6xl px-6 pt-20 pb-16 sm:pt-24">
+          <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,1fr)_26rem]">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white/70 px-3 py-1 text-xs font-medium text-ink-600 dark:border-ink-800 dark:bg-ink-900/70 dark:text-ink-400">
+                <Icon.Spark className="text-gold-500" width="1em" height="1em" />
+                For Rotary and Rotaract clubs and districts
+              </span>
+              <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance text-ink-900 sm:text-6xl dark:text-ink-50">
+                {brand.tagline}
+              </h1>
+              <p className="mt-6 max-w-xl text-lg text-pretty text-ink-600 sm:text-xl dark:text-ink-300">
+                The roster, the meetings, the guests, the committees, the projects and the dues —
+                in one place, built for the way a Rotary club actually runs its year.
+              </p>
+              <div className="mt-9 flex flex-wrap items-center gap-3">
+                <Link
+                  to="/features"
+                  prefetch="intent"
+                  className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-3 font-medium text-white transition-colors hover:bg-brand-700"
+                >
+                  See everything it does
+                  <Icon.Arrow />
+                </Link>
+                <form method="post" action="/demo/enter">
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-2 rounded-lg border border-ink-300 bg-white/60 px-5 py-3 font-medium text-ink-800 transition-colors hover:border-brand-400 hover:text-brand-600 dark:border-ink-700 dark:bg-ink-900/60 dark:text-ink-200"
+                  >
+                    Open the demo club
+                  </button>
+                </form>
+              </div>
+              <p className="mt-6 text-sm text-ink-500">
+                From {formatPlain(PLANS.club_starter.monthlyCents)} a month for a club. No sign-up
+                needed to look around.
+              </p>
             </div>
-            <p className="mt-6 text-sm text-ink-500">
-              From {formatPlain(PLANS.club_starter.monthlyCents)} a month for a club. No setup fee
-              unless you want help. Cancel whenever.
-            </p>
+
+            {/* Real DOM, not a screenshot: selectable, theme-aware, and a
+                few hundred bytes rather than a few hundred kilobytes. */}
+            <div className="relative hidden lg:block">
+              <RosterScreen />
+              <MeetingScreen className="absolute -right-6 -bottom-24 w-72 shadow-lg" />
+            </div>
           </div>
 
           {hasMedia("home-hero") && (
-            <div className="mt-14">
+            <div className="mt-32 lg:mt-40">
               <Media slot="home-hero" priority className="shadow-sm" />
             </div>
           )}
         </div>
       </section>
 
-      {/* ── The problem, with the actual number ── */}
-      <section className="border-b border-ink-200 dark:border-ink-800">
-        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-16 lg:grid-cols-[minmax(0,1fr)_20rem] lg:py-20">
+      {/* ── What it runs ── */}
+      <section className="mx-auto max-w-6xl px-6 py-20 lg:pt-32">
+        <div className="max-w-2xl">
+          <Eyebrow>The whole club</Eyebrow>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
+            Everything a club runs on, in one subscription
+          </h2>
+          <p className="mt-4 text-pretty text-ink-600 dark:text-ink-400">
+            Most clubs pay for four or five tools that don't talk to each other. These are the
+            same jobs, done once.
+          </p>
+        </div>
+
+        <div className="mt-12 grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+          {RUNS_ON.map((r, i) => {
+            const Glyph = Icon[r.icon];
+            return (
+              <Reveal key={r.label} delay={(i % 3) as 0 | 1 | 2}>
+                <Link to={`/features/${r.slug}`} prefetch="intent" className="group block">
+                  <span className="flex items-center gap-2.5 font-semibold text-ink-900 group-hover:text-brand-600 dark:text-ink-100">
+                    <Glyph className="text-brand-600 dark:text-brand-500" />
+                    {r.label}
+                  </span>
+                  <p className="mt-1.5 text-sm text-pretty text-ink-600 dark:text-ink-400">
+                    {r.body}
+                  </p>
+                </Link>
+              </Reveal>
+            );
+          })}
+        </div>
+
+        <div className="mt-12 flex flex-wrap gap-3">
+          <Link
+            to="/features"
+            prefetch="intent"
+            className="inline-flex items-center gap-2 rounded-lg border border-ink-300 px-4 py-2.5 font-medium text-ink-800 transition-colors hover:border-brand-400 hover:text-brand-600 dark:border-ink-700 dark:text-ink-200"
+          >
+            All {FEATURES.length} features, with what each one doesn't do
+            <Icon.Arrow />
+          </Link>
+        </div>
+      </section>
+
+      {/* ── Screens ── */}
+      <section className="border-y border-ink-200 bg-white/50 dark:border-ink-800 dark:bg-ink-900/30">
+        <div className="mx-auto max-w-6xl px-6 py-20">
           <div className="max-w-2xl">
-            <Eyebrow>The problem</Eyebrow>
-            <p className="mt-4 text-xl text-pretty text-ink-800 sm:text-2xl dark:text-ink-200">
-              North American Rotary membership has fallen by roughly a third in twenty years.
-              Very little of that was people leaving in a disagreement.
+            <Eyebrow>What you'll be using</Eyebrow>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
+              Dense where it needs to be, quiet everywhere else
+            </h2>
+            <p className="mt-4 text-pretty text-ink-600 dark:text-ink-400">
+              Built for a volunteer doing club admin on a Tuesday evening, not for a
+              full-time administrator. Every one of these is the real screen, with fewer rows.
             </p>
-            <p className="mt-5 text-pretty text-ink-600 dark:text-ink-400">
-              Most of it was people drifting quietly out of clubs that were doing their best and
-              had no way to notice in time. Software that only records who is a member is
-              software that records the decline. This one is built to interrupt it.
-            </p>
-            <Link
-              to="/about"
-              prefetch="intent"
-              className="mt-6 inline-flex items-center gap-2 font-medium text-brand-600 hover:underline"
-            >
-              Why we built it
-              <Icon.Arrow />
-            </Link>
           </div>
 
-          {/* The sequence, as the thing it is: a countdown nobody was watching. */}
-          <Reveal>
-            <ol className="space-y-3 rounded-2xl border border-ink-200 p-6 dark:border-ink-800">
+          <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Reveal delay={0}>
+              <DuesScreen />
+            </Reveal>
+            <Reveal delay={1}>
+              <HealthScreen />
+            </Reveal>
+            <Reveal delay={2}>
+              <MeetingScreen />
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Retention: now the differentiator, not the headline ── */}
+      <section className="mx-auto max-w-6xl px-6 py-20">
+        <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,1fr)_24rem]">
+          <div className="max-w-2xl">
+            <Eyebrow>And the part nobody else does</Eyebrow>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
+              It tells you who's slipping away, while there's still time
+            </h2>
+            <p className="mt-5 text-lg text-pretty text-ink-600 dark:text-ink-300">
+              North American Rotary membership has fallen by roughly a third in twenty years.
+              Very little of that was people leaving in a disagreement — most of it was people
+              drifting quietly out of clubs that were doing their best and had no way to notice
+              in time.
+            </p>
+            <p className="mt-4 text-pretty text-ink-600 dark:text-ink-400">
+              Every club system records attendance. This one reads it. From facts your club
+              already writes down it produces a short weekly list of specific people, each with
+              the evidence behind it and one thing somebody could do this week.
+            </p>
+
+            <ol className="mt-8 space-y-3">
               {[
                 ["Week 1", "Misses a meeting. Work, travel, a sick parent."],
                 ["Week 3", "Misses another. Nobody calls — everyone assumes somebody did."],
@@ -172,74 +265,45 @@ export default function Home() {
                 </li>
               ))}
             </ol>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                to="/retention"
+                prefetch="intent"
+                className="inline-flex items-center gap-2 font-medium text-brand-600 hover:underline"
+              >
+                Exactly how the scoring works
+                <Icon.Arrow />
+              </Link>
+            </div>
+          </div>
+
+          <Reveal>
+            <SignalsScreen />
           </Reveal>
         </div>
       </section>
 
-      {/* ── The promises ── */}
-      <section className="mx-auto max-w-6xl px-6 py-20">
-        <Eyebrow>What it does</Eyebrow>
-        <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
-          Built around the year a club actually has
-        </h2>
-        <div className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-          {PROMISES.map((p, i) => {
-            const Glyph = Icon[PROMISE_ICONS[p.key as keyof typeof PROMISE_ICONS] ?? "Check"];
-            return (
-              <Reveal key={p.key} delay={(i % 3) as 0 | 1 | 2}>
-                <div>
-                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-500">
-                    <Glyph width="1.4em" height="1.4em" />
-                  </span>
-                  <h3 className="mt-4 text-lg font-semibold text-ink-900 dark:text-ink-100">
-                    {p.title}
-                  </h3>
-                  <p className="mt-2 text-pretty text-ink-600 dark:text-ink-400">{p.body}</p>
-                </div>
-              </Reveal>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ── Features ── */}
-      <section className="border-y border-ink-200 bg-white/50 dark:border-ink-800 dark:bg-ink-900/30">
+      {/* ── Promises ── */}
+      <section className="border-t border-ink-200 dark:border-ink-800">
         <div className="mx-auto max-w-6xl px-6 py-20">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div className="max-w-2xl">
-              <Eyebrow>Features</Eyebrow>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
-                Everything a club runs on
-              </h2>
-            </div>
-            <Link
-              to="/features"
-              prefetch="intent"
-              className="inline-flex items-center gap-2 font-medium text-brand-600 hover:underline"
-            >
-              All {FEATURES.length}
-              <Icon.Arrow />
-            </Link>
-          </div>
-
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {featured.map((f, i) => {
-              const Glyph = Icon[f.icon];
+          <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
+            Built around the year a club actually has
+          </h2>
+          <div className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+            {PROMISES.map((p, i) => {
+              const Glyph = Icon[PROMISE_ICONS[p.key as keyof typeof PROMISE_ICONS] ?? "Check"];
               return (
-                <Reveal key={f.slug} delay={(i % 3) as 0 | 1 | 2}>
-                  <Link
-                    to={`/features/${f.slug}`}
-                    prefetch="intent"
-                    className="group flex h-full flex-col rounded-2xl border border-ink-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-brand-300 dark:border-ink-800 dark:bg-ink-900 dark:hover:border-brand-500/50"
-                  >
-                    <span className="flex items-center gap-2.5 font-medium text-ink-900 dark:text-ink-100">
-                      <Glyph className="text-brand-600 dark:text-brand-500" />
-                      {f.name}
+                <Reveal key={p.key} delay={(i % 3) as 0 | 1 | 2}>
+                  <div>
+                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-500">
+                      <Glyph width="1.4em" height="1.4em" />
                     </span>
-                    <p className="mt-2 flex-1 text-sm text-pretty text-ink-600 dark:text-ink-400">
-                      {f.summary}
-                    </p>
-                  </Link>
+                    <h3 className="mt-4 text-lg font-semibold text-ink-900 dark:text-ink-100">
+                      {p.title}
+                    </h3>
+                    <p className="mt-2 text-pretty text-ink-600 dark:text-ink-400">{p.body}</p>
+                  </div>
                 </Reveal>
               );
             })}
@@ -248,37 +312,39 @@ export default function Home() {
       </section>
 
       {/* ── Guides ── */}
-      <section className="mx-auto max-w-6xl px-6 py-20">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="max-w-2xl">
-            <Eyebrow>Guides</Eyebrow>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
-              Useful whether or not you ever buy anything
-            </h2>
+      <section className="border-t border-ink-200 dark:border-ink-800">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="max-w-2xl">
+              <Eyebrow>Guides</Eyebrow>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
+                Useful whether or not you ever buy anything
+              </h2>
+            </div>
+            <Link
+              to="/guides"
+              prefetch="intent"
+              className="inline-flex items-center gap-2 font-medium text-brand-600 hover:underline"
+            >
+              All guides
+              <Icon.Arrow />
+            </Link>
           </div>
-          <Link
-            to="/guides"
-            prefetch="intent"
-            className="inline-flex items-center gap-2 font-medium text-brand-600 hover:underline"
-          >
-            All guides
-            <Icon.Arrow />
-          </Link>
-        </div>
-        <div className="mt-10 grid gap-6 sm:grid-cols-3">
-          {GUIDES.slice(0, 3).map((g, i) => (
-            <Reveal key={g.slug} delay={(i % 3) as 0 | 1 | 2}>
-              <Link to={`/guides/${g.slug}`} prefetch="intent" className="group block">
-                <Icon.Book className="text-ink-400" />
-                <h3 className="mt-3 font-semibold text-ink-900 group-hover:text-brand-600 dark:text-ink-100">
-                  {g.title}
-                </h3>
-                <p className="mt-2 text-sm text-pretty text-ink-600 dark:text-ink-400">
-                  {g.summary}
-                </p>
-              </Link>
-            </Reveal>
-          ))}
+          <div className="mt-10 grid gap-6 sm:grid-cols-3">
+            {GUIDES.slice(0, 3).map((g, i) => (
+              <Reveal key={g.slug} delay={(i % 3) as 0 | 1 | 2}>
+                <Link to={`/guides/${g.slug}`} prefetch="intent" className="group block">
+                  <Icon.Book className="text-ink-400" />
+                  <h3 className="mt-3 font-semibold text-ink-900 group-hover:text-brand-600 dark:text-ink-100">
+                    {g.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-pretty text-ink-600 dark:text-ink-400">
+                    {g.summary}
+                  </p>
+                </Link>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 

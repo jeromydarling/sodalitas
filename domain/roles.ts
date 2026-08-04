@@ -38,6 +38,19 @@ export const CAPABILITIES = [
   "projects.write",
   "projects.write_own",
 
+  // Events
+  "events.read",
+  "events.write",
+  // Separate from events.write on purpose. Whoever stands at the door with a
+  // phone on the night needs to mark people in and nothing else — not edit the
+  // event, not see what anyone paid.
+  "events.check_in",
+
+  // Documents
+  "documents.read",           // the members' library
+  "documents.read_board",     // minutes, budgets, anything marked 'board'
+  "documents.write",
+
   // Money
   "dues.read",
   "dues.write",
@@ -111,6 +124,8 @@ const MEMBER_BASE = [
   "meetings.read",
   "committees.read",
   "projects.read",
+  "events.read",
+  "documents.read",
 ] as const satisfies readonly Capability[];
 
 const OFFICER_BASE = [
@@ -123,6 +138,9 @@ const OFFICER_BASE = [
   "tasks.read_all",
   "tasks.write",
   "reports.read",
+  "events.write",
+  "events.check_in",
+  "documents.write",
 ] as const satisfies readonly Capability[];
 
 export const ROLES: Record<string, RoleDef> = {
@@ -148,6 +166,7 @@ export const ROLES: Record<string, RoleDef> = {
       "payments.read", "payments.write", "payments.settings",
       "email.send", "email.send_all", "email.templates",
       "notes.read_all",
+      "documents.read_board",
       "public_page.edit",
       "site.edit", "site.publish", "site.domain",
       "reports.export",
@@ -167,7 +186,7 @@ export const ROLES: Record<string, RoleDef> = {
       ...OFFICER_BASE,
       "committees.write", "projects.write",
       "dues.read", "payments.read",
-      "email.send", "notes.read_all",
+      "email.send", "notes.read_all", "documents.read_board",
       "communio.read",
       "settings.read",
     ],
@@ -185,6 +204,7 @@ export const ROLES: Record<string, RoleDef> = {
       "committees.write",
       "email.send", "email.send_all", "email.templates",
       "import.run", "import.commit",
+      "documents.read_board",
       "public_page.edit",
       "site.edit", "site.publish", "site.domain",
       "reports.export",
@@ -202,6 +222,7 @@ export const ROLES: Record<string, RoleDef> = {
       ...OFFICER_BASE,
       "dues.read", "dues.write",
       "payments.read", "payments.write", "payments.settings",
+      "documents.read_board",
       "reports.export",
       "email.send",
     ],
@@ -279,6 +300,7 @@ export const ROLES: Record<string, RoleDef> = {
       "payments.read", "payments.write", "payments.settings",
       "email.send", "email.send_all", "email.templates",
       "import.run", "import.commit",
+      "documents.read_board",
       "public_page.edit",
       "site.edit", "site.publish", "site.domain",
       "reports.export",

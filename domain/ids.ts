@@ -62,6 +62,13 @@ export const ID_PREFIXES = {
   siteVersion: "sr",
   siteMedia: "sm",
   siteDomain: "sd",
+  event: "ev",
+  ticketType: "tt",
+  eventQuestion: "eq",
+  registration: "rg",
+  registrationItem: "ri",
+  folder: "fd",
+  document: "dc",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

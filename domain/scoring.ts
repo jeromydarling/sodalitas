@@ -55,6 +55,31 @@ function award(value: number, floor: number, target: number, max: number): numbe
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
+/** The smaller of two "days since" figures, ignoring the ones we don't know. */
+function nearest(a: number | null, b: number | null): number | null {
+  if (a === null) return b;
+  if (b === null) return a;
+  return Math.min(a, b);
+}
+
+/** "On 1 committee, 2 projects, and at 3 club events" — only the true parts. */
+function involvementLabel(committees: number, projects: number, events: number): string {
+  const parts: string[] = [];
+  if (committees > 0) parts.push(`${committees} committee${committees === 1 ? "" : "s"}`);
+  if (projects > 0) parts.push(`${projects} project${projects === 1 ? "" : "s"}`);
+  const lead = parts.length ? `On ${joinList(parts)}` : "";
+  if (events > 0) {
+    const evented = `at ${events} club event${events === 1 ? "" : "s"}`;
+    return lead ? `${lead}, and ${evented}` : `At ${events} club event${events === 1 ? "" : "s"}`;
+  }
+  return lead;
+}
+
+function joinList(parts: string[]): string {
+  if (parts.length <= 1) return parts[0] ?? "";
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
 // ── Club health ───────────────────────────────────────────────────────────────
 
 export interface ClubFacts {
@@ -340,10 +365,31 @@ export function scoreClubHealth(f: ClubFacts): ScoreResult<HealthStatus> {
 // ── Member engagement ─────────────────────────────────────────────────────────
 
 export interface MemberFacts {
-  /** Days since this member last attended anything. Null = never recorded. */
+  /** Days since this member last attended a meeting. Null = never recorded. */
   daysSinceAttended: number | null;
   /** Share of this club's meetings attended in 90 days, 0–1. Null if unknown. */
   attendanceRate90d: number | null;
+  /**
+   * Days since they turned up to a club event — the auction, the golf day, the
+   * social. Null = never, or never recorded.
+   *
+   * Separate from `daysSinceAttended` because the two are different facts and
+   * merging them upstream would hide which one is true. The member who never
+   * makes a Tuesday but runs the fundraiser every year is the exact false
+   * positive that costs a club its trust in this score, and this is the field
+   * that fixes it.
+   */
+  daysSinceEvent: number | null;
+  /** Club events attended in the last 180 days. */
+  eventCount: number;
+  /**
+   * Times they booked a place and didn't come, in the last 180 days.
+   *
+   * Not scored. It is a reason, not a penalty: somebody who meant to come
+   * twice and didn't is worth a phone call, and docking them points for it
+   * would be punishing the intention we want more of.
+   */
+  eventNoShows: number;
   /** Days since any interaction was logged with them. Null = never. */
   daysSinceTouch: number | null;
   committeeCount: number;
@@ -396,6 +442,14 @@ export function scoreMemberEngagement(f: MemberFacts): ScoreResult<RiskLevel> {
 
   const relaxedAttendance = f.membershipType === "honorary" || f.membershipType === "corporate";
 
+  // How long since anyone in this club actually saw them, by whichever route.
+  // A club night counts as being seen. Everything below asks "when were they
+  // last here", and answering that with meetings alone was wrong.
+  const daysSinceSeen = nearest(f.daysSinceAttended, f.daysSinceEvent);
+  const seenAtEvent =
+    f.daysSinceEvent !== null &&
+    (f.daysSinceAttended === null || f.daysSinceEvent < f.daysSinceAttended);
+
   // ── Attendance ──
   if (relaxedAttendance) {
     // Honorary and corporate members aren't expected weekly. Judging them by
@@ -408,7 +462,7 @@ export function scoreMemberEngagement(f: MemberFacts): ScoreResult<RiskLevel> {
       points: round(MEMBER_WEIGHTS.attendance * 0.75),
       max: MEMBER_WEIGHTS.attendance,
     });
-  } else if (f.daysSinceAttended === null) {
+  } else if (daysSinceSeen === null) {
     drivers.push({
       key: "attendance",
       label: f.daysSinceJoined <= NEW_MEMBER_GRACE_DAYS
@@ -425,22 +479,30 @@ export function scoreMemberEngagement(f: MemberFacts): ScoreResult<RiskLevel> {
   } else {
     // Recency does most of the work. 14 days is normal for a weekly club;
     // past 60 days somebody has quietly stopped coming.
-    const recency = award(-f.daysSinceAttended, -70, -14, MEMBER_WEIGHTS.attendance * 0.6);
+    const recency = award(-daysSinceSeen, -70, -14, MEMBER_WEIGHTS.attendance * 0.6);
+    // The rate stays a *meeting* rate. Events are irregular by nature, so
+    // folding them into a percentage would produce a number that means
+    // nothing — "attended 100% of the one thing we held" is not a fact worth
+    // scoring. Recency is where they belong.
     const rate = f.attendanceRate90d === null
       ? MEMBER_WEIGHTS.attendance * 0.4 * 0.5
       : award(f.attendanceRate90d, 0.2, 0.7, MEMBER_WEIGHTS.attendance * 0.4);
     drivers.push({
       key: "attendance",
       label:
-        f.daysSinceAttended <= 14 ? "Attending regularly"
-        : f.daysSinceAttended <= 45 ? `Last seen ${f.daysSinceAttended} days ago`
-        : `Hasn't attended in ${f.daysSinceAttended} days`,
-      value: f.attendanceRate90d === null ? `${f.daysSinceAttended}d ago` : pct(f.attendanceRate90d),
+        seenAtEvent && f.daysSinceEvent !== null
+          ? f.daysSinceEvent <= 45
+            ? `At a club event ${f.daysSinceEvent} days ago, though not a recent meeting`
+            : `Last seen at a club event ${f.daysSinceEvent} days ago`
+        : daysSinceSeen <= 14 ? "Attending regularly"
+        : daysSinceSeen <= 45 ? `Last seen ${daysSinceSeen} days ago`
+        : `Hasn't attended in ${daysSinceSeen} days`,
+      value: f.attendanceRate90d === null ? `${daysSinceSeen}d ago` : pct(f.attendanceRate90d),
       points: round(recency + rate),
       max: MEMBER_WEIGHTS.attendance,
     });
-    if (f.daysSinceAttended >= 60) {
-      reasons.push(`They haven't been to a meeting in ${f.daysSinceAttended} days.`);
+    if (daysSinceSeen >= 60) {
+      reasons.push(`Nobody has seen them at anything in ${daysSinceSeen} days.`);
       actions.push("A short personal note beats another club-wide email. Ask how they're doing, not where they've been.");
     }
   }
@@ -448,19 +510,34 @@ export function scoreMemberEngagement(f: MemberFacts): ScoreResult<RiskLevel> {
   // ── Participation ──
   // A member on a committee or a project is markedly more likely to still be
   // here next year. This is the lever a club can actually pull.
-  const involvement = f.committeeCount + f.projectCount;
+  //
+  // Turning up to club events counts for half a seat each, and stops short of
+  // the full award. Half, because coming to the auction is not the same as
+  // being responsible for it; capped below the maximum, because a member who
+  // buys a ticket to everything and holds no role is a real and recognisable
+  // pattern, and it must not read as the most involved person in the club.
+  const eventCredit = Math.min(f.eventCount, 3) * 0.5;
+  const involvement = f.committeeCount + f.projectCount + eventCredit;
   drivers.push({
     key: "participation",
-    label:
-      involvement === 0 ? "Not on a committee or a project"
-      : `On ${f.committeeCount} committee${f.committeeCount === 1 ? "" : "s"} and ${f.projectCount} project${f.projectCount === 1 ? "" : "s"}`,
-    value: String(involvement),
+    label: involvement === 0
+      ? "Not on a committee or a project"
+      : involvementLabel(f.committeeCount, f.projectCount, f.eventCount),
+    value: String(round(involvement)),
     points: award(involvement, 0, 2, MEMBER_WEIGHTS.participation),
     max: MEMBER_WEIGHTS.participation,
   });
   if (involvement === 0 && f.daysSinceJoined > NEW_MEMBER_GRACE_DAYS) {
     reasons.push("They aren't involved in anything beyond meetings.");
     actions.push("Invite them onto one committee. Being needed is what makes people stay.");
+  }
+
+  // A no-show is not a penalty — see MemberFacts. It is the earliest visible
+  // sign of the drift this score exists to catch, and it earns a phone call
+  // rather than a deduction. Two is a pattern; one is a Tuesday.
+  if (f.eventNoShows >= 2) {
+    reasons.push(`They've booked ${f.eventNoShows} club events and not come.`);
+    actions.push("Ring them before the next one. Booking and not coming usually means something changed.");
   }
 
   // ── Connection ──

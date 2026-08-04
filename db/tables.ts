@@ -63,6 +63,13 @@ export const TENANT_TABLES = [
   "site_page_versions",
   "site_media",
   "site_domains",
+  "events",
+  "event_ticket_types",
+  "event_questions",
+  "event_registrations",
+  "event_registration_items",
+  "document_folders",
+  "documents",
 ] as const;
 
 export type TenantTable = (typeof TENANT_TABLES)[number];

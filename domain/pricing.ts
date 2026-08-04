@@ -166,6 +166,44 @@ export const SETUP_OPTIONS: SetupOption[] = [
  * so a club's real number may differ — and the calculator says so rather than
  * implying we know their invoice.
  */
+/**
+ * What we take on a paid event ticket. The only cut we take of anybody's
+ * money, anywhere in the product.
+ *
+ * Worth being exact about, because the rest of the payments story is "we take
+ * nothing" and that claim is only worth having if the exception is stated as
+ * loudly as the rule:
+ *
+ *   **Dues and donations: nothing.** Unchanged, and it stays that way. Those
+ *   are a club's own money moving between a club's own members and its own
+ *   bank, and taking a slice of a member's dues is not a business we want.
+ *
+ *   **Free events: nothing.** Which is most club events. A members' night, a
+ *   committee meeting, a working party — none of those cost a club a penny to
+ *   run through here, and none of them are worth a percentage of nothing.
+ *
+ *   **Paid tickets: 1%, capped.** A $35 dinner ticket costs the club 35
+ *   cents. A $2,000 table sponsorship costs the club $1.50, not $20, which is
+ *   the entire point of the cap — a percentage with no ceiling turns the one
+ *   big fundraiser a club runs each year into our best month.
+ *
+ * For comparison, and quoted on the pricing page: Eventbrite takes about 3.7%
+ * plus $1.79 a ticket, so a $35 ticket costs roughly $3.09 there against 35
+ * cents here.
+ */
+export interface PlatformFee {
+  /** Proportional part, e.g. 0.01 for 1%. */
+  rate: number;
+  /** Hard ceiling per order, in cents. */
+  capCents: number;
+}
+
+export const EVENT_FEE: PlatformFee = { rate: 0.01, capCents: 150 };
+
+/** The fee in the words used on every surface that mentions it. */
+export const EVENT_FEE_SUMMARY =
+  "1% of paid tickets, never more than $1.50 an order, and nothing at all on free events.";
+
 export interface Incumbent {
   key: string;
   name: string;

@@ -46,6 +46,9 @@ const club = (over: Partial<ClubFacts> = {}): ClubFacts => ({ ...HEALTHY_CLUB, .
 const STEADY_MEMBER: MemberFacts = {
   daysSinceAttended: 7,
   attendanceRate90d: 0.75,
+  daysSinceEvent: null,
+  eventCount: 0,
+  eventNoShows: 0,
   daysSinceTouch: 20,
   committeeCount: 1,
   projectCount: 1,
@@ -425,12 +428,105 @@ describe("member engagement", () => {
       member({ daysSinceAttended: 0, attendanceRate90d: 1, daysSinceTouch: 0, committeeCount: 9, projectCount: 9, daysSinceJoined: 365 * 50 }),
       member({ daysSinceAttended: 9999, attendanceRate90d: 0, daysSinceTouch: 9999, committeeCount: 0, projectCount: 0, duesCurrent: false, daysSinceJoined: 9999 }),
       member({ daysSinceJoined: 0, daysSinceAttended: null, attendanceRate90d: null, daysSinceTouch: null }),
+      member({ eventCount: 99, eventNoShows: 99, daysSinceEvent: 0, committeeCount: 9, projectCount: 9 }),
     ];
     for (const c of cases) {
       const r = scoreMemberEngagement(c);
       expect(r.score).toBeGreaterThanOrEqual(0);
       expect(r.score).toBeLessThanOrEqual(100);
     }
+  });
+});
+
+// ── Events ────────────────────────────────────────────────────────────────────
+//
+// The claim this whole module makes on the events feature: a club event is a
+// form of showing up, and a member who shows up that way must not be flagged
+// as drifting. These tests are the claim, written down.
+
+describe("club events count as showing up", () => {
+  it("does not call someone absent when they were at a club event last week", () => {
+    const auctionChair = member({
+      daysSinceAttended: 200,      // never makes a Tuesday
+      attendanceRate90d: 0.05,
+      daysSinceEvent: 7,           // ran the auction last week
+      eventCount: 3,
+    });
+    const genuinelyGone = member({
+      daysSinceAttended: 200,
+      attendanceRate90d: 0.05,
+      daysSinceEvent: null,
+      eventCount: 0,
+    });
+
+    const seen = scoreMemberEngagement(auctionChair);
+    const gone = scoreMemberEngagement(genuinelyGone);
+
+    expect(seen.score).toBeGreaterThan(gone.score);
+    expect(seen.reasons.join(" ")).not.toMatch(/haven't|hasn't|nobody has seen/i);
+    expect(gone.reasons.join(" ")).toMatch(/seen them/i);
+  });
+
+  it("says which one it means, so nobody reads it as meeting attendance", () => {
+    const r = scoreMemberEngagement(
+      member({ daysSinceAttended: 200, attendanceRate90d: 0.05, daysSinceEvent: 12, eventCount: 2 }),
+    );
+    const attendance = r.drivers.find((d) => d.key === "attendance");
+    expect(attendance?.label).toMatch(/club event/i);
+  });
+
+  it("still flags someone who has been to neither in months", () => {
+    const r = scoreMemberEngagement(
+      member({ daysSinceAttended: 120, daysSinceEvent: 200, attendanceRate90d: 0.1 }),
+    );
+    expect(r.reasons.join(" ")).toMatch(/120 days/);
+  });
+
+  it("counts events as involvement, but one event is worth less than one committee seat", () => {
+    const points = (over: Partial<MemberFacts>) =>
+      scoreMemberEngagement(member({ committeeCount: 0, projectCount: 0, eventCount: 0, ...over }))
+        .drivers.find((d) => d.key === "participation")!.points;
+
+    expect(points({ eventCount: 1 })).toBeGreaterThan(points({}));
+    expect(points({ eventCount: 1 })).toBeLessThan(points({ committeeCount: 1 }));
+  });
+
+  it("does not let ticket-buying alone read as the most involved person in the club", () => {
+    const ticketBuyer = scoreMemberEngagement(
+      member({ committeeCount: 0, projectCount: 0, eventCount: 20 }),
+    );
+    const chairOfTwo = scoreMemberEngagement(
+      member({ committeeCount: 1, projectCount: 1, eventCount: 0 }),
+    );
+    const points = (r: ReturnType<typeof scoreMemberEngagement>) =>
+      r.drivers.find((d) => d.key === "participation")!.points;
+    expect(points(ticketBuyer)).toBeLessThan(points(chairOfTwo));
+  });
+
+  it("raises repeated no-shows as a phone call, not a deduction", () => {
+    const noShows = member({ eventNoShows: 3 });
+    const clean = member({ eventNoShows: 0 });
+
+    const a = scoreMemberEngagement(noShows);
+    const b = scoreMemberEngagement(clean);
+
+    expect(a.score).toBe(b.score);
+    expect(a.reasons.join(" ")).toMatch(/booked 3 club events/i);
+    expect(a.actions.join(" ")).toMatch(/ring them/i);
+  });
+
+  it("treats one no-show as a Tuesday, not a pattern", () => {
+    const r = scoreMemberEngagement(member({ eventNoShows: 1 }));
+    expect(r.reasons.join(" ")).not.toMatch(/booked/i);
+  });
+
+  it("leaves a member with no events recorded exactly where they were", () => {
+    // A club that hasn't run an event through Sodalitas must score identically
+    // to before the feature existed. Nobody's number moves because we shipped.
+    const before = scoreMemberEngagement(
+      member({ daysSinceEvent: null, eventCount: 0, eventNoShows: 0 }),
+    );
+    expect(before.score).toBe(scoreMemberEngagement(member()).score);
   });
 });
 

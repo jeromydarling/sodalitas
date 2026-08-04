@@ -24,6 +24,8 @@ export type InteractionKind =
   | "gift"
   | "signup"
   | "rsvp"
+  | "event_attended"
+  | "event_no_show"
   | "task_done"
   | "system";
 
@@ -39,6 +41,11 @@ export const INTERACTION_LABELS: Record<InteractionKind, string> = {
   gift: "Gift",
   signup: "Signed up",
   rsvp: "RSVP",
+  event_attended: "Came to an event",
+  // Deliberately not folded into `attendance`. "Booked a place and didn't use
+  // it" is a different fact from "wasn't there", and a timeline that renders
+  // the two the same way loses the one that's worth reading.
+  event_no_show: "Booked but didn't come",
   task_done: "Task completed",
   system: "Recorded",
 };

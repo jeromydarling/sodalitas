@@ -237,7 +237,9 @@ export async function gatherMemberFacts(
 ): Promise<MemberFactsRow[]> {
   const d90 = shiftDays(today, -90);
 
-  const [members, attendance, touches, involvement, dues] = await Promise.all([
+  const d180 = shiftDays(today, -180);
+
+  const [members, attendance, touches, involvement, dues, events] = await Promise.all([
     db.raw<{
       membership_id: string; person_id: string; first_name: string; last_name: string;
       preferred_name: string | null; membership_type: string; stage: string;
@@ -299,16 +301,34 @@ export async function gatherMemberFacts(
         GROUP BY person_id`,
       [clubId, today],
     ),
+
+    // Club events. This is the join that makes an events module worth building
+    // here rather than pointing clubs at Eventbrite: the member who runs the
+    // auction every year and never makes a Tuesday stops reading as drifting.
+    // Cancelled events are excluded — nobody failed to attend those.
+    db.raw<{ person_id: string; last_event: string | null; attended: number; no_shows: number }>(
+      `SELECT r.person_id,
+              MAX(CASE WHEN r.status = 'attended' THEN e.starts_on END) AS last_event,
+              SUM(CASE WHEN r.status = 'attended' AND e.starts_on >= ? THEN 1 ELSE 0 END) AS attended,
+              SUM(CASE WHEN r.status = 'no_show'  AND e.starts_on >= ? THEN 1 ELSE 0 END) AS no_shows
+         FROM event_registrations r
+         JOIN events e ON e.id = r.event_id AND e.tenant_id = {{tenant}} AND e.status != 'cancelled'
+        WHERE r.tenant_id = {{tenant}} AND r.club_id = ? AND r.person_id IS NOT NULL
+        GROUP BY r.person_id`,
+      [d180, d180, clubId],
+    ),
   ]);
 
   const att = new Map(attendance.map((a) => [a.person_id, a]));
   const touch = new Map(touches.map((t) => [t.person_id, t.last_touch]));
   const inv = new Map(involvement.map((i) => [i.person_id, i]));
   const overdue = new Set(dues.filter((d) => d.overdue > 0).map((d) => d.person_id));
+  const ev = new Map(events.map((e) => [e.person_id, e]));
 
   return members.map((m) => {
     const a = att.get(m.person_id);
     const i = inv.get(m.person_id);
+    const e = ev.get(m.person_id);
     const lastTouch = touch.get(m.person_id);
 
     // Fall back to the membership record's creation when no join date was
@@ -323,6 +343,9 @@ export async function gatherMemberFacts(
       name: `${m.preferred_name || m.first_name} ${m.last_name}`,
       daysSinceAttended: a?.last_present ? daysBetweenDates(a.last_present, today) : null,
       attendanceRate90d: a && a.marked > 0 ? Math.min(1, a.present / a.marked) : null,
+      daysSinceEvent: e?.last_event ? daysBetweenDates(e.last_event, today) : null,
+      eventCount: e?.attended ?? 0,
+      eventNoShows: e?.no_shows ?? 0,
       daysSinceTouch: lastTouch ? daysSince(lastTouch, today) : null,
       committeeCount: i?.committees ?? 0,
       projectCount: i?.projects ?? 0,

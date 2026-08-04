@@ -219,3 +219,44 @@ describe("connectAuthorizeUrl", () => {
     expect(() => connectAuthorizeUrl({ APP_URL: "https://x" }, "s")).toThrow(StripeNotConfigured);
   });
 });
+
+/**
+ * The platform fee, tested through the wire format rather than the input.
+ *
+ * `application_fee_amount` has to sit inside `payment_intent_data` on a direct
+ * charge — the charge belongs to the connected account, and the fee is a
+ * property of the intent that account creates. Put it at the top level and
+ * Stripe accepts the request and silently takes nothing, which is a bug that
+ * looks like working software until somebody reconciles a payout.
+ *
+ * So these assert on the encoded body, which is the thing Stripe actually
+ * reads. A test against the TypeScript input would have passed either way.
+ */
+describe("the platform fee on the wire", () => {
+  const encode = (applicationFeeCents?: number) =>
+    encodeForm({
+      payment_intent_data: {
+        metadata: { kind: "event" },
+        ...(applicationFeeCents && applicationFeeCents > 0
+          ? { application_fee_amount: applicationFeeCents }
+          : {}),
+      },
+    });
+
+  it("nests the fee under payment_intent_data", () => {
+    expect(encode(35)).toContain("payment_intent_data%5Bapplication_fee_amount%5D=35");
+  });
+
+  it("sends no fee field at all when there is no fee", () => {
+    // Not `application_fee_amount=0`. A zero is a different thing to Stripe
+    // than an absent field, and sending it on every dues invoice would be a
+    // standing claim on money we have said publicly that we don't take.
+    const body = encode(0).join("&");
+    expect(body).not.toContain("application_fee_amount");
+    expect(encode(undefined).join("&")).not.toContain("application_fee_amount");
+  });
+
+  it("still carries the metadata that finds our row again", () => {
+    expect(encode(35)).toContain("payment_intent_data%5Bmetadata%5D%5Bkind%5D=event");
+  });
+});

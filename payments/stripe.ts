@@ -185,6 +185,18 @@ export interface CheckoutInput {
   metadata: Record<string, string>;
   /** Our checkout_sessions id, used as the idempotency key. */
   reference: string;
+  /**
+   * Our platform fee, in cents. Omitted or zero means we take nothing, which
+   * is the case for every dues invoice and every donation in the product —
+   * see domain/pricing.ts. Only paid event tickets ever set this.
+   *
+   * On a direct charge this must be `application_fee_amount` inside
+   * `payment_intent_data`, not at the top level: the charge belongs to the
+   * connected account, and the fee is a property of the payment intent that
+   * account creates. Put it at the top level and Stripe accepts the request
+   * and silently takes nothing.
+   */
+  applicationFeeCents?: number;
 }
 
 export interface CheckoutSession {
@@ -225,7 +237,16 @@ export async function createCheckoutSession(
       // sees in the Stripe dashboard, and "invoice iv_…" there saves an hour of
       // cross-referencing later.
       metadata: input.metadata,
-      payment_intent_data: { metadata: input.metadata },
+      payment_intent_data: {
+        metadata: input.metadata,
+        // Only present when there is one. An `application_fee_amount: 0` is a
+        // different thing to Stripe than no fee at all, and sending the zero
+        // on every dues invoice would be a standing claim on money we have
+        // said we don't take.
+        ...(input.applicationFeeCents && input.applicationFeeCents > 0
+          ? { application_fee_amount: input.applicationFeeCents }
+          : {}),
+      },
     },
     { account: input.account, idempotencyKey: `checkout:${input.reference}` },
   );

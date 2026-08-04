@@ -1,0 +1,101 @@
+name: Images
+
+# Generates the marketing photography with Workers AI and commits it.
+#
+# It runs here rather than on somebody's laptop for one reason: this is where
+# the Cloudflare token already lives. Nobody has to be provisioned an account
+# to change a prompt.
+#
+# The trigger is the prompt file itself. Editing content/media.ts is the only
+# thing that should produce new images, and it is also what makes this loop-safe
+# — the commit this job pushes touches app/media/** only, which the path filter
+# below does not match, so it cannot re-trigger itself.
+on:
+  push:
+    branches: [main]
+    paths:
+      - content/media.ts
+      - .github/workflows/images.yml
+
+concurrency:
+  group: images
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check credentials are present
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$ACCOUNT" ]; then
+            echo "::error::Needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID as repository secrets."
+            echo "The token needs Workers AI: Read, on top of whatever the deploy needs."
+            exit 1
+          fi
+
+      - run: npm ci
+
+      # --force because the point of a prompt change is a different picture.
+      # Without it the script would find the old file and skip the slot.
+      - name: Generate
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run images -- --force
+
+      # A 1280×720 PNG out of FLUX is around a megabyte; at q82 WebP it is a
+      # tenth of that and indistinguishable. These sit above the fold on the
+      # marketing site, so it is the difference between a fast first paint and
+      # a slow one.
+      - name: Convert to WebP
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq webp
+          shopt -s nullglob
+          for f in app/media/*.png; do
+            cwebp -quiet -q 82 "$f" -o "${f%.png}.webp"
+            rm "$f"
+          done
+          ls -la app/media/
+
+      - name: Commit them
+        run: |
+          if [ -z "$(git status --porcelain app/media)" ]; then
+            echo "Nothing changed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/media
+          git commit -m "Generate marketing photography from content/media.ts
+
+          Produced by .github/workflows/images.yml with Workers AI (FLUX schnell),
+          from the prompts and house style in content/media.ts. Converted to WebP
+          at q82 — these sit above the fold and a megabyte of PNG there is a slow
+          first paint."
+          git push
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Images"
+            echo ""
+            echo '```'
+            ls -la app/media 2>/dev/null || echo "(nothing generated)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

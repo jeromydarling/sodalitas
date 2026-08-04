@@ -11,6 +11,8 @@ import {
   capability, saveSettings, refreshAccount, unlinkAccount, getSettings,
 } from "@db/services/payments";
 import { connectConfigured, revokeConnect } from "@payments/stripe";
+import { teamInvite } from "@emails/templates";
+import { sendEmail } from "@emails/send";
 import { parseDollars } from "@domain/fees";
 import {
   PageHeader, Card, Table, Th, Td, Chip, Button, ButtonLink, Field, Input, Select, Textarea,
@@ -215,8 +217,8 @@ export async function action({ request, context }: Route.ActionArgs) {
   });
 
   // The token is stored only as a hash — a leaked backup is not a leaked
-  // mailbox. Mail goes out through the queue and degrades to the console.
-  const { hash } = await issueToken();
+  // mailbox. The plain token exists just long enough to go into the email.
+  const { token, hash } = await issueToken();
   await db.insert("invites", {
     id: newId("invite"),
     club_id: club.id,
@@ -229,7 +231,36 @@ export async function action({ request, context }: Route.ActionArgs) {
     created_at: ctx.now,
   });
 
-  return { ok: true, invited: email };
+  const clubRow = await db.byId<{ name: string }>("clubs", club.id, { columns: "name" });
+  const template = teamInvite({
+    inviterName: ctx.user?.displayName ?? "Someone at the club",
+    clubName: clubRow?.name ?? "the club",
+    roleLabel: ROLES[roleKey]?.label ?? roleKey,
+    url: `${ctx.env.APP_URL}/invite/${token}`,
+  });
+
+  // Transactional: an invitation somebody's club sent them on purpose is not
+  // marketing, and it must reach an address that opted out of the newsletter.
+  const sent = await sendEmail(
+    ctx.env,
+    db,
+    {
+      to: email,
+      subject: template.subject,
+      text: template.text,
+      clubId: club.id,
+      personId,
+      templateKey: "teamInvite",
+      transactional: true,
+    },
+    ctx.now,
+  );
+
+  // Report what actually happened. With no mail provider the invitation is
+  // written to the log rather than sent, and telling the president "invited"
+  // when nothing left the building is how somebody waits a week for an email
+  // that was never going to arrive.
+  return { ok: true, invited: email, delivery: sent.status };
 }
 
 /** What the Connect round trip told us, in words rather than a query string. */
@@ -535,7 +566,15 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
             )}
             {actionData && "invited" in actionData && actionData.invited && (
               <p className="text-sm text-steady-500">
-                Invited {actionData.invited}. They'll get a link to sign in.
+                {actionData.delivery === "sent" ? (
+                  <>Invited {actionData.invited}. They'll get a link to sign in.</>
+                ) : (
+                  <>
+                    {actionData.invited} now holds the office, but no email went out — this
+                    installation has no mail provider configured, so the invitation was written
+                    to the log instead. They can still sign in with a link from the login page.
+                  </>
+                )}
               </p>
             )}
 

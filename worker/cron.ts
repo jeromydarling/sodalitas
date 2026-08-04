@@ -120,6 +120,21 @@ const JOBS: Record<JobKey, Job> = {
       .bind(now)
       .run();
 
+    // One unsubscribe token is minted per non-transactional send, since we
+    // store only the hash and so cannot reuse one. They're small, but they
+    // accumulate forever otherwise. The window is long on purpose: people
+    // unsubscribe from mail they received a year ago, and a dead opt-out link
+    // is worse than the row it saved.
+    const { UNSUBSCRIBE_TOKEN_TTL_DAYS } = await import("@emails/unsubscribe");
+    const cutoff = new Date(
+      Date.now() - UNSUBSCRIBE_TOKEN_TTL_DAYS * 86400_000,
+    ).toISOString();
+    const staleTokens = await env.DB.prepare(
+      `DELETE FROM email_unsubscribe_tokens WHERE created_at < ?`,
+    )
+      .bind(cutoff)
+      .run();
+
     // The demo is the best sales argument this product has, and anyone can
     // click around in it — including deleting things. Weekly reset, plus a
     // self-heal if it's ever found empty, so it is never broken and never bare.
@@ -141,7 +156,11 @@ const JOBS: Record<JobKey, Job> = {
       demo = { reseeded: false, error: err instanceof Error ? err.message : String(err) };
     }
 
-    return { sessions_expired: expired.meta.changes ?? 0, demo };
+    return {
+      sessions_expired: expired.meta.changes ?? 0,
+      unsubscribe_tokens_pruned: staleTokens.meta.changes ?? 0,
+      demo,
+    };
   },
 };
 

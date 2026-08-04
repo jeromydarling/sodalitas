@@ -8,11 +8,57 @@
  * reason to come back.
  */
 import { describe, it, expect } from "vitest";
-import { ALL_TEMPLATES } from "./templates";
+import {
+  ALL_TEMPLATES,
+  meetingReminder,
+  checkIn,
+  guestFollowUp,
+  duesReminder,
+} from "./templates";
 import { textToHtml } from "./send";
 import { VOICE } from "@content/brand";
 
 const templates = Object.entries(ALL_TEMPLATES).map(([name, build]) => ({ name, ...build() }));
+
+/**
+ * The same non-transactional templates, built with no unsubscribe token.
+ *
+ * A caller that forgets to mint one is the failure this guards, so the fixture
+ * has to reproduce the forgetting rather than the correct path.
+ */
+const APP = "https://example.test";
+const NO_TOKEN = [
+  {
+    name: "meetingReminder",
+    template: meetingReminder({
+      firstName: "Ada", clubName: "Rotary Club of Lakeside", date: "6 August",
+      time: "12:15", location: "Blue Water Grill", topic: "The coat drive",
+      speaker: null, unsubscribeToken: "", appUrl: APP,
+    }),
+  },
+  {
+    name: "checkIn",
+    template: checkIn({
+      firstName: "Ada", clubName: "Rotary Club of Lakeside", senderName: "Margaret",
+      unsubscribeToken: "", appUrl: APP,
+    }),
+  },
+  {
+    name: "guestFollowUp",
+    template: guestFollowUp({
+      guestName: "Sam", clubName: "Rotary Club of Lakeside", senderName: "Ada",
+      meetingDate: "6 August", unsubscribeToken: "", appUrl: APP,
+    }),
+  },
+  {
+    name: "duesReminder",
+    template: duesReminder({
+      firstName: "Ada", clubName: "Rotary Club of Lakeside", amount: "$150.00",
+      periodLabel: "2026–27 first half", payUrl: null,
+      unsubscribeToken: "", appUrl: APP,
+    }),
+  },
+];
 
 describe("every template", () => {
   it("has a subject and a body", () => {
@@ -79,6 +125,25 @@ describe("consent", () => {
     for (const t of templates.filter((x) => !x.transactional)) {
       expect(t.text, t.name).toMatch(/unsubscribe|rather not/i);
       expect(t.text, t.name).toMatch(/https?:\/\//);
+    }
+  });
+
+  it("never emits an unsubscribe URL with nothing after the slash", () => {
+    // This exact bug shipped: a caller passed an empty token and every
+    // recipient got a link to a 404. The footer now degrades to a sentence
+    // with no URL, so the broken shape is unreachable rather than merely
+    // discouraged.
+    for (const { name, template } of NO_TOKEN) {
+      expect(template.transactional, name).toBe(false);
+      expect(template.text, name).not.toMatch(/\/unsubscribe\/(\s|$)/m);
+      expect(template.text, name).not.toContain("/unsubscribe/");
+      expect(template.text, name).toMatch(/rather not/i);
+    }
+  });
+
+  it("still gives an opt-out route when there is no token", () => {
+    for (const { name, template } of NO_TOKEN) {
+      expect(template.text, name).toMatch(/reply to this email/i);
     }
   });
 

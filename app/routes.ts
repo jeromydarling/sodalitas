@@ -22,8 +22,13 @@ export default [
   route("pay/thanks", "routes/pay/thanks.tsx"),
   route("pay/cancelled", "routes/pay/cancelled.tsx"),
 
+  // ── Opt-out. No session, no layout: every non-transactional email links
+  //    here, and it has to work for somebody who wants nothing to do with us.
+  route("unsubscribe/:token", "routes/unsubscribe.tsx"),
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   route("signup", "routes/auth/signup.tsx"),
+  route("invite/:token", "routes/auth/invite.tsx"),
   route("login", "routes/auth/login.tsx"),
   route("auth/magic/:token", "routes/auth/magic.tsx"),
   route("logout", "routes/auth/logout.tsx"),

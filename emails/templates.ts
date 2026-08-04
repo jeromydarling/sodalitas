@@ -23,12 +23,23 @@ export interface Template {
 
 const SIGN_OFF = (clubName: string) => `\n\n— ${clubName}`;
 
+/**
+ * The opt-out footer.
+ *
+ * An empty token degrades to a sentence with no link rather than emitting
+ * `.../unsubscribe/` with nothing after it. That dead URL shipped once already:
+ * a caller passed `""` and every recipient got a link to a 404. A footer that
+ * can't be rendered broken is worth more than a rule saying don't do that.
+ *
+ * Still worth minting a real token at every call site — this is the floor, not
+ * the intent. `issueUnsubscribeToken` in emails/unsubscribe.ts is one await.
+ */
 function unsubscribeLine(appUrl: string, token: string): string {
-  return (
-    `\n\n———\n` +
-    `You're getting this because you're on the club's list. ` +
-    `If you'd rather not: ${appUrl}/unsubscribe/${token}`
-  );
+  const opener = `\n\n———\nYou're getting this because you're on the club's list. `;
+  if (!token) {
+    return opener + `If you'd rather not, reply to this email and we'll take you off.`;
+  }
+  return opener + `If you'd rather not: ${appUrl}/unsubscribe/${token}`;
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────

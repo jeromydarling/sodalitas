@@ -11,6 +11,7 @@ import {
 import { capability, checkoutInvoice, PaymentUnavailable } from "@db/services/payments";
 import { duesReminder } from "@emails/templates";
 import { sendEmail } from "@emails/send";
+import { issueUnsubscribeToken } from "@emails/unsubscribe";
 import {
   PageHeader, Card, Table, Th, Td, Chip, Empty, Button, Field, Input, Select,
   formatDate, money,
@@ -161,7 +162,7 @@ export async function action({ request, context }: Route.ActionArgs) {
         amount: money((invoice?.amount_cents ?? 0) - (invoice?.paid_cents ?? 0)),
         periodLabel: invoice?.period_label ?? "",
         payUrl: checkout.url,
-        unsubscribeToken: "",
+        unsubscribeToken: await issueUnsubscribeToken(db, to, ctx.now),
         appUrl: ctx.env.APP_URL,
       });
       await sendEmail(

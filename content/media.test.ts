@@ -170,42 +170,32 @@ describe("the direction on people", () => {
   );
 
   /**
-   * The three ways a prompt can put a room full of people on the page without
-   * a face being rendered.
+   * Words that ask for a crowd.
    *
-   * Stated as alternatives rather than as one required technique, because the
-   * first version of this test demanded motion blur specifically — and then
-   * blocked the fix that finally worked. Motion blur is a post-condition the
-   * model can decline to apply; three runs proved it. Backlighting is
-   * physics: put the camera between the room and the windows and every figure
-   * is a silhouette whether the model cooperates or not.
+   * This replaced a test that demanded motion blur, then silhouettes — both
+   * of which were techniques for hiding a crowd rather than reasons to have
+   * one. Crowds are the actual failure: these models render two people at a
+   * table beautifully and thirty in a hall appallingly, and left to choose
+   * they always choose the same thirty.
    */
-  const FACE_PROOF = /motion blur|softened|mid-movement|blurred|silhouette|contre-jour|backlit|out of focus/i;
+  const CROWD = /\bcrowd|packed|dozens|twenty or thirty|thirty or forty|full of people|a room of people/i;
 
-  it("makes faces unrenderable wherever people appear", () => {
-    // This is the actual requirement. A face this model renders is a face
-    // that looks generated, and — left to its own devices — it is also always
-    // the same face: elderly, white, in a church hall, on the front page of a
-    // product about clubs not dying.
-    expect(peopled.length).toBeGreaterThan(2);
-    for (const slot of peopled) {
-      expect(slot.prompt, slot.key).toMatch(FACE_PROOF);
-    }
+  it("never asks for a crowd", () => {
+    const crowded = MEDIA.filter((m) => CROWD.test(m.prompt)).map((m) => m.key);
+    expect(crowded, `these ask for a crowd: ${crowded.join(", ")}`).toEqual([]);
+    expect(HOUSE_STYLE).toMatch(/at most three people/i);
   });
 
-  it("says who is in the room wherever a face could still be read", () => {
-    // Only where the technique leaves people legible enough to have an age.
-    // A silhouette hasn't got one, which is most of why it's the better
-    // answer — the instruction can't be ignored if there is nothing to
-    // ignore it with.
-    const legible = peopled.filter((m) => !/silhouette|contre-jour|backlit/i.test(m.prompt));
-    const vague = legible
-      .filter((m) => !/mixed[- ]age|thirties|mixed group/i.test(m.prompt))
+  it("says who the people are, since there are few enough to see", () => {
+    // With two in frame it matters more, not less. Left unsaid the model
+    // picks, and it picks the same way every time — which is how the first
+    // set ended up illustrating a product about clubs not dying with a
+    // photograph of a club that had.
+    const vague = peopled
+      .filter((m) => !/in (his|her|their) (twenties|thirties|forties|fifties|sixties|seventies)/i.test(m.prompt))
       .map((m) => m.key);
 
-    expect(vague, `these describe a group without saying who's in it: ${vague.join(", ")}`).toEqual(
-      [],
-    );
+    expect(vague, `these show people without saying who: ${vague.join(", ")}`).toEqual([]);
   });
 
   it("does not let the homepage be a set of empty rooms", () => {

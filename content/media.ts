@@ -6,35 +6,35 @@
  * layouts close up cleanly rather than showing a placeholder — a grey box with
  * a mountain glyph is worse than nothing, because it reads as broken.
  *
- * ## What went wrong the first time, because it shapes everything below
+ * ## The rule that had to go
  *
- * The first set had one rule about people — "no recognisable faces" — and it
- * produced exactly two outcomes. Empty rooms, which read as *abandoned*. And,
- * where the model did put people in, a sparse group of elderly white people in
- * a church hall: the precise stereotype Rotary spends its public-image budget
- * fighting, on the front page of a product about clubs not dying. One picture
- * undid the argument the copy was making.
+ * This set spent four rounds trying to show people without showing a face —
+ * first by forbidding faces, then by blurring them, then by silhouetting them.
+ * Every one of those is a contortion, and contorted photographs look contorted.
+ * Motion blur in particular reads as a mistake rather than as a technique when
+ * it is the only thing holding a picture together.
  *
- * The mistake was thinking of the rule as a prohibition. A prohibition tells a
- * diffusion model what to leave out and nothing about what to make, so it falls
- * back on its priors — and its prior for "community hall meeting" is a funeral
- * reception. The fix is to describe the photograph you want: where the camera
- * is, what the shutter is doing, who is in the room.
+ * The real problem was never faces. It was **crowds**. Ask any of these models
+ * for thirty people in a community hall and you get thirty badly-drawn people,
+ * and — left to choose — always the same thirty: elderly, white, sparse, in
+ * what looks like a funeral reception. That is the picture that undid the
+ * argument the copy was making, and no amount of blur was going to fix a
+ * composition that was wrong before the shutter opened.
  *
- * So the direction now is:
+ * So the rule now is about **cast size, not faces**:
  *
- *   **Motion, not absence.** A slow shutter renders a room full of people as
- *   warmth and movement. Nobody's face resolves, which was the point, but the
- *   room reads as alive rather than empty — and a blurred figure has no age or
- *   race for the model to stereotype.
+ *   **One to three people, or none.** These models render two people at a
+ *   table beautifully and thirty people in a hall appallingly, and a club is
+ *   better represented by two members talking than by a wide shot of a room
+ *   anyway. Half the set is objects and rooms, which is what a good stock
+ *   library looks like too.
  *
- *   **Hands and gestures at close range.** A hand pulling out a chair says
- *   welcome more clearly than a wide shot of a room, and it crops the problem
- *   out of frame instead of forbidding it.
+ *   **Faces are fine.** At this cast size they come out looking like
+ *   photographs, and a face doing something ordinary is worth more than a
+ *   clever crop that avoids one.
  *
- *   **Say who is there.** Where people appear at any distance, the prompt names
- *   a mixed-age group explicitly. Left unsaid, the model picks, and it picks
- *   wrong for this audience every time.
+ *   **Say who they are.** With two people in frame it matters more, not less.
+ *   Left unsaid the model picks, and it picks the same way every time.
  *
  * ## Alt text
  *
@@ -111,7 +111,10 @@ export const HOUSE_STYLE =
   // this line existed, one of them twice.
   "fills the entire frame edge to edge, no letterboxing, no black bars, no borders, no matting. " +
   "All signs and labels blank: no text, no lettering, no shop names, no logos, no watermarks. " +
-  "No face is sharply rendered anywhere in the picture.";
+  // The cast rule, in the place it can't be forgotten. Crowds are where these
+  // models fall apart and where the stereotype lives; three people is the
+  // most any of these prompts asks for.
+  "At most three people anywhere in the picture — never a crowd, never a full room of people.";
 
 /**
  * How treatment changes the shot.
@@ -138,23 +141,16 @@ export const MEDIA: MediaSlot[] = [
   // the opposite of it.
   {
     key: "home-hero",
-    // The one that has to work hardest, and the one that took four rounds.
-    //
-    // "Long exposure, every figure softened into motion blur, mixed ages"
-    // produced a sharply rendered room of grey-haired people three times.
-    // Motion blur is a post-condition — the model can simply decline to apply
-    // it — and an age range is a request it can ignore. Backlighting is
-    // neither. Put the camera between the room and the windows and physics
-    // does the work: every figure is a dark shape against bright glass, the
-    // room reads as full and warm, and there is no face, no age and no race
-    // for the model to get wrong. It is also a better photograph, and at 18%
-    // behind a headline it reads as texture rather than as people.
+    // Four rounds went into rendering a full room and every one failed. This
+    // one doesn't try: two people at a table, which is a photograph these
+    // models make well, and which says more about a club than a wide shot of
+    // thirty strangers ever did. At 18% behind a headline the room around
+    // them is all the backdrop needs.
     prompt:
-      "Inside a community hall packed for a lunch meeting, shot straight into a wall of tall " +
-      "bright windows — hard contre-jour, heavily backlit. Everyone in the room is a dark " +
-      "silhouette against the blown-out white glass: thirty or forty people at round tables, " +
-      "leaning in, arms up, mid-conversation, not one of them lit from the front. Dust and " +
-      "haze in the light. The room is unmistakably full.",
+      "Two club members sitting across the corner of a table in a community hall, mid " +
+      "conversation — a woman in her thirties listening, a man in his sixties talking with a " +
+      "hand raised. Coffee cups and a notebook between them. Tall windows behind throwing " +
+      "bright daylight across the table, the rest of the hall soft and out of focus.",
     alt: "",
     aspect: "21/9",
     treatment: "backdrop",
@@ -163,10 +159,10 @@ export const MEDIA: MediaSlot[] = [
   {
     key: "home-work",
     prompt:
-      "Outdoors on a bright Saturday morning: a work party in high-visibility vests unloading " +
-      "timber and tools from the back of a pickup truck at the edge of a park. A mixed group, " +
-      "several of them in their thirties, one crouching over a toolbox. Caught mid-movement, " +
-      "long shadows, breath visible in the cold.",
+      "Two volunteers in high-visibility vests planting a young tree at the edge of a park on " +
+      "a bright cold Saturday morning — a man in his forties holding the sapling upright, a " +
+      "woman in her twenties treading the soil in. A spade and a watering can beside them, " +
+      "bare trees behind, low winter sun and long shadows.",
     alt: "A club work party unloading tools at the start of a service project",
     aspect: "21/9",
     treatment: "band",
@@ -174,19 +170,12 @@ export const MEDIA: MediaSlot[] = [
   },
   {
     key: "home-welcome",
-    // Welcome, at the scale it actually happens. A wide shot of a room says
-    // nothing; one chair pulled out says the whole thing.
-    //
-    // Was "a hand pulling out a chair", and the hand is why it changed: hands
-    // are the thing diffusion models are worst at, and two runs produced
-    // something between a glove and a claw on the front page. The chair alone
-    // carries the same meaning and has no anatomy to get wrong.
     prompt:
-      "One empty banquet chair pulled back and turned slightly out from a table already laid " +
-      "for lunch — a water jug, glasses, a folded napkin at the place. Room made for somebody " +
-      "who hasn't arrived yet. No people anywhere in the picture. Warm indoor light, shot wide " +
-      "open, the rest of the room dissolved behind.",
-    alt: "A chair pulled out at a table laid for lunch, waiting for somebody",
+      "Two women greeting each other just inside the door of a hall — one in her fifties with " +
+      "a hand on the other's arm, welcoming a visitor in her thirties who is still holding her " +
+      "coat. Both smiling, caught mid-sentence rather than posed. Warm light from the room " +
+      "beyond, thrown out of focus.",
+    alt: "A member welcoming a visitor at the door",
     aspect: "1/1",
     treatment: "detail",
     usedOn: "/",
@@ -195,14 +184,14 @@ export const MEDIA: MediaSlot[] = [
     key: "home-evening",
     // "Seen from outside through a window" gave the model three planes to
     // reconcile — street, glass, interior — and it resolved them as a
-    // triptych with a hard vertical seam down the middle and an invented
-    // neon sign. One plane instead: stand in the doorway.
+    // triptych with a hard seam and an invented neon sign. One plane, and
+    // three people rather than a room of them.
     prompt:
-      "Standing in the open doorway of a hall at the end of an evening meeting, looking in. " +
-      "A mixed-age group, thirties through sixties, still standing about in twos and threes " +
-      "talking, all of them softened by motion blur. Warm lamplight, chairs pushed back, " +
-      "coats over arms. Nobody leaving yet.",
-    alt: "A club still talking after the meeting has finished",
+      "Three people standing talking with coats on at the end of an evening meeting, nobody " +
+      "in a hurry to leave — a man in his thirties laughing, two others listening. Stacked " +
+      "chairs and a cleared table behind them, warm lamplight overhead, the rest of the hall " +
+      "dark.",
+    alt: "Three members still talking after the meeting has finished",
     aspect: "21/9",
     treatment: "band",
     usedOn: "/",
@@ -236,14 +225,11 @@ export const MEDIA: MediaSlot[] = [
     // So the subject changed to the object instead of the people. A tray of
     // blank badges by the door is what a club that expects visitors looks
     // like, and it says it without a single person in frame.
-    // Name badges came back as a dark binder — too small and too specific an
-    // object. A guest book is large, obvious, and something diffusion models
-    // render well: an open book with ruled pages and a pen.
     prompt:
-      "An open visitors' book on a table just inside a doorway, its ruled pages completely " +
-      "blank, a pen resting in the gutter. Warm light from the room beyond, thrown out of " +
-      "focus. Nobody in frame.",
-    alt: "An open visitors' book waiting by the door",
+      "A club member in his forties leaning in to say something to a first-time visitor beside " +
+      "him at a lunch table, both half turned towards each other and smiling. Plates and " +
+      "glasses in front of them, the room behind out of focus.",
+    alt: "A member sitting with a visitor at lunch",
     aspect: "4/3",
     treatment: "plate",
     usedOn: "/features/guests",
@@ -251,9 +237,9 @@ export const MEDIA: MediaSlot[] = [
   {
     key: "projects-spot",
     prompt:
-      "Close overhead crop of a trestle table, camera looking straight down. Two pairs of hands " +
-      "and forearms reach in from the edges of the frame to pack tins into cardboard boxes. " +
-      "Nothing above the elbows is in shot. Daylight from a high window, the work half finished.",
+      "Two volunteers packing tins into cardboard boxes on a trestle table in a church hall — " +
+      "a man in his sixties and a woman in her thirties working opposite each other, heads " +
+      "down, half the boxes filled. Daylight from a high window.",
     alt: "Volunteers sorting donated food into boxes at a service project",
     aspect: "4/3",
     treatment: "plate",

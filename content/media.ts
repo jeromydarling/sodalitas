@@ -29,6 +29,14 @@
  * texture" is noise, not access.
  */
 
+/**
+ * Editing anything below regenerates every image.
+ *
+ * This file is the trigger for .github/workflows/images.yml, which runs the
+ * generator with the Cloudflare token in Actions, converts the results to WebP
+ * and commits them. So a prompt change is a one-line edit and a push — nobody
+ * needs an API token on their laptop to change what a picture looks like.
+ */
 export interface MediaSlot {
   /** Also the filename: app/media/<key>.<ext>. */
   key: string;

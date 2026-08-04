@@ -43,9 +43,15 @@ secrets/
 # typescript build info
 *.tsbuildinfo
 
-# Generated marketing imagery. Not committed: it's several MB of binary that
-# `npm run images` reproduces from content/media.ts whenever it's wanted, and
-# every slot renders nothing until its file exists. Commit them deliberately if
-# you'd rather CI not need a Cloudflare token.
-app/media/*
-!app/media/.gitkeep
+# Generated marketing imagery IS committed.
+#
+# It used to be ignored, on the reasoning that `npm run images` could reproduce
+# it from content/media.ts whenever wanted. That stopped being true the moment
+# generation moved into CI: the runner produced all eight images, this rule
+# swallowed them, and the job reported success with an empty commit. A green
+# tick and no images is the worst of both.
+#
+# They're the Worker's static assets now — about 450KB of WebP in total, which
+# is less than one npm dependency. The PNGs the generator emits stay ignored,
+# since the workflow converts them and they never need to travel.
+app/media/*.png

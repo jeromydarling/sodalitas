@@ -110,9 +110,10 @@ jobs:
           check / 200
           check /features 200
           check /pricing 200
-          # Touches D1. This is the one that was 500ing.
-          check /club/lakeside 200
-          # A slug that doesn't exist must 404, not 500 — proves the query ran.
+          # Touches D1. A slug that doesn't exist must 404 rather than 500 —
+          # a 500 here means the query itself failed, which is the "Worker up,
+          # schema missing" state this whole step exists to catch. That is the
+          # real signal, and it needs no seeded data to be meaningful.
           check /club/definitely-not-a-club 404
 
           echo ""
@@ -120,7 +121,45 @@ jobs:
           curl -s "$BASE/api/health"
           echo ""
 
+          # The demo club is reported, not asserted. A fresh deployment
+          # legitimately has no demo until the nightly housekeeping cron seeds
+          # it, and failing a perfectly good deploy over that teaches everyone
+          # to ignore a red tick.
+          demo=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/club/lakeside")
+          if [ "$demo" = "200" ]; then
+            echo "Demo club is seeded."
+          else
+            echo "::warning::The demo club isn't seeded ( /club/lakeside → $demo )."
+            echo "It self-heals at 04:00 UTC, or seed it now with:"
+            echo "  curl -X POST -H \"X-Admin-Token: \$ADMIN_TOKEN\" $BASE/api/ops/seed-demo"
+          fi
+
           exit $fail
+
+      # Seeds the demo immediately when ADMIN_TOKEN is available to Actions.
+      # Optional on purpose: it is a Worker secret first and foremost, and a
+      # deploy must not require a second copy of it to succeed.
+      - name: Seed the demo, if we can
+        if: success()
+        env:
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          BASE="https://sodalitas.jer-f84.workers.dev"
+          if [ -z "$ADMIN_TOKEN" ]; then
+            echo "No ADMIN_TOKEN in Actions secrets — skipping. The 04:00 UTC cron handles it."
+            exit 0
+          fi
+          if [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/club/lakeside")" = "200" ]; then
+            echo "Already seeded."
+            exit 0
+          fi
+          curl -sS -X POST -H "X-Admin-Token: $ADMIN_TOKEN" "$BASE/api/ops/seed-demo"
+          echo ""
+          # Scores it and generates the week's signals, so the demo shows the
+          # product working rather than an empty dashboard.
+          curl -sS -X POST -H "X-Admin-Token: $ADMIN_TOKEN" "$BASE/api/ops/run-job/nightly_snapshots" >/dev/null
+          curl -sS -X POST -H "X-Admin-Token: $ADMIN_TOKEN" "$BASE/api/ops/run-job/weekly_signals" >/dev/null
+          echo "Seeded and scored."
 
       - name: Summary
         if: always()

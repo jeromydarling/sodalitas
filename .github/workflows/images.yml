@@ -72,9 +72,25 @@ jobs:
           done
           ls -la app/media/
 
+      # The generator catches per-slot failures and still exits 0, which is
+      # right for a local run — eight images where one failed is a useful
+      # result. In CI it means a job can go green having produced nothing, so
+      # the count is checked here rather than trusted.
+      - name: Check something was actually produced
+        run: |
+          count=$(ls app/media/*.webp 2>/dev/null | wc -l)
+          echo "$count image(s) in app/media/"
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No images were produced. Check the Generate step — the usual cause is a token without Workers AI: Read."
+            exit 1
+          fi
+
       - name: Commit them
         run: |
           if [ -z "$(git status --porcelain app/media)" ]; then
+            # Reached when the images are byte-identical to what's committed,
+            # which FLUX will not normally give you. It also used to be reached
+            # when .gitignore was swallowing them — hence the check above.
             echo "Nothing changed."
             exit 0
           fi

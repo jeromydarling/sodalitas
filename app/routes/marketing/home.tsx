@@ -300,18 +300,13 @@ export default function Home() {
       {/* ── Promises ── */}
       <section className="border-t border-ink-200 dark:border-ink-800">
         <div className="mx-auto max-w-6xl px-6 py-20">
-          {/* The square sits beside the heading rather than above the grid:
-              it's a small warm thing next to a list of claims, which is the
-              only job a picture has in a section like this. Hidden below md,
-              where it would push the list a full screen down. */}
-          <div className="grid items-center gap-10 md:grid-cols-[minmax(0,1fr)_14rem]">
-            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
-              Built around the year a club actually has
-            </h2>
-            {hasMedia("home-welcome") && (
-              <Media slot="home-welcome" className="hidden md:block" />
-            )}
-          </div>
+          <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
+            Built around the year a club actually has
+          </h2>
+          {/* Five promises in a three-column grid leaves one cell empty, and
+              the square goes there. Beside the heading it read as an
+              appendage with a lot of dead space around it; in the grid it is
+              part of the rhythm and fills a hole that was already there. */}
           <div className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
             {PROMISES.map((p, i) => {
               const Glyph = Icon[PROMISE_ICONS[p.key as keyof typeof PROMISE_ICONS] ?? "Check"];
@@ -329,6 +324,15 @@ export default function Home() {
                 </Reveal>
               );
             })}
+
+            {hasMedia("home-welcome") && (
+              <Reveal delay={2}>
+                {/* `h-full` so it matches whatever the tallest card in the row
+                    turns out to be, rather than setting the row height itself
+                    and pushing the two cards beside it apart. */}
+                <Media slot="home-welcome" className="h-full" />
+              </Reveal>
+            )}
           </div>
         </div>
       </section>

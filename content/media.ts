@@ -105,9 +105,13 @@ export const FILM =
  * and letterboxing is the one that breaks the layout outright.
  */
 export const HOUSE_STYLE =
-  `${FILM}. Fills the entire frame edge to edge — no letterboxing, no black bars, no borders, ` +
-  "no matting. All signs and labels blank: no text, no lettering, no shop names, no logos, " +
-  "no watermarks. No face is sharply rendered anywhere in the picture.";
+  `${FILM}. A still photograph, not a film still and not a cinematic frame — ` +
+  // "35mm film" reads as cinema to the model as readily as it reads as a
+  // camera, and cinema means bars. Two slots came back letterboxed before
+  // this line existed, one of them twice.
+  "fills the entire frame edge to edge, no letterboxing, no black bars, no borders, no matting. " +
+  "All signs and labels blank: no text, no lettering, no shop names, no logos, no watermarks. " +
+  "No face is sharply rendered anywhere in the picture.";
 
 /**
  * How treatment changes the shot.
@@ -207,7 +211,8 @@ export const MEDIA: MediaSlot[] = [
       "Photographed from directly behind two people at the edge of a crowded function room — " +
       "backs of heads and shoulders only, no face visible anywhere. One has an arm out towards " +
       "the tables, introducing the other to the room. Beyond them a mixed-age crowd, thirties " +
-      "through seventies, thrown completely out of focus into warm light.",
+      "through seventies, dissolved by the shallow focus into soft colour and shape — not one " +
+      "person in the crowd distinguishable from another.",
     alt: "One member introducing a visitor to the room",
     aspect: "4/3",
     treatment: "plate",

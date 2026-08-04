@@ -355,7 +355,8 @@ function FieldInput({
           <option value="">None</option>
           {["calendar", "users", "heart", "globe", "handshake", "award", "book", "leaf",
             "droplet", "graduation", "stethoscope", "home", "utensils", "megaphone",
-            "map-pin", "clock", "mail", "phone", "sparkles", "wheel"].map((i) => (
+            "map-pin", "clock", "mail", "phone", "sparkles", "wheel",
+            "ticket", "file-text"].map((i) => (
             <option key={i} value={i}>
               {i}
             </option>

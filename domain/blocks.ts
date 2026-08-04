@@ -49,6 +49,7 @@ export const BLOCK_ICONS = [
   "calendar", "users", "heart", "globe", "handshake", "award", "book",
   "leaf", "droplet", "graduation", "stethoscope", "home", "utensils",
   "megaphone", "map-pin", "clock", "mail", "phone", "sparkles", "wheel",
+  "ticket", "file-text",
 ] as const;
 export type BlockIcon = (typeof BLOCK_ICONS)[number];
 
@@ -169,6 +170,43 @@ export const BLOCKS = {
         label: "What to say when nothing is scheduled",
         multiline: true,
       },
+    },
+  },
+
+  events: {
+    label: "What's on",
+    blurb: "The club's public events, with a link to register. Pulled live, so it can't go stale.",
+    icon: "ticket",
+    live: true,
+    fields: {
+      heading: { kind: "text", max: 120, label: "Heading" },
+      intro: { kind: "text", max: 300, label: "Intro", multiline: true },
+      count: { kind: "int", min: 1, max: 12, fallback: 3, label: "How many to show" },
+      showPrice: { kind: "bool", fallback: true, label: "Show what a ticket costs" },
+      emptyText: {
+        kind: "text",
+        max: 200,
+        label: "What to say when nothing is scheduled",
+        multiline: true,
+      },
+    },
+  },
+
+  documents: {
+    label: "Documents",
+    blurb:
+      "Public documents from the club's library — bylaws, forms, annual reports. Only ever the ones marked public.",
+    icon: "file-text",
+    live: true,
+    fields: {
+      heading: { kind: "text", max: 120, label: "Heading" },
+      intro: { kind: "text", max: 300, label: "Intro", multiline: true },
+      count: { kind: "int", min: 1, max: 24, fallback: 6, label: "How many to show" },
+      // Not a picker of individual documents. A club that curates a list here
+      // has two places to keep in step and will forget one; the library's own
+      // visibility setting is the single control, and this block obeys it.
+      folderSlug: { kind: "text", max: 60, label: "Only from this folder (optional)" },
+      showSize: { kind: "bool", fallback: true, label: "Show the file size" },
     },
   },
 
@@ -617,23 +655,44 @@ export function serialiseBlocks(blocks: Block[]): string {
 export function liveDataNeeded(blocks: Block[]): {
   meetings: number;
   projects: number;
+  events: number;
+  documents: number;
+  /** Folders named by document blocks. Empty means "anywhere in the library". */
+  documentFolders: string[];
   officers: boolean;
   donate: boolean;
   join: boolean;
 } {
   let meetings = 0;
   let projects = 0;
+  let events = 0;
+  let documents = 0;
+  const documentFolders = new Set<string>();
   let officers = false;
   let donate = false;
   let join = false;
   for (const b of blocks) {
     if (b.type === "meetings") meetings = Math.max(meetings, Number(b.count) || 4);
     if (b.type === "projects") projects = Math.max(projects, Number(b.count) || 3);
+    if (b.type === "events") events = Math.max(events, Number(b.count) || 3);
+    if (b.type === "documents") {
+      documents = Math.max(documents, Number(b.count) || 6);
+      if (typeof b.folderSlug === "string" && b.folderSlug) documentFolders.add(b.folderSlug);
+    }
     if (b.type === "officers") officers = true;
     if (b.type === "donate") donate = true;
     if (b.type === "join") join = true;
   }
-  return { meetings, projects, officers, donate, join };
+  return {
+    meetings,
+    projects,
+    events,
+    documents,
+    documentFolders: [...documentFolders],
+    officers,
+    donate,
+    join,
+  };
 }
 
 /**

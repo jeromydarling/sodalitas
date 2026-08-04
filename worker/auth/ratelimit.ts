@@ -50,6 +50,13 @@ export const RULES = {
    */
   donate: { windowSec: 3600, max: 10 },
   /**
+   * Booking an event place, per IP per club. Slightly looser than donations:
+   * a family sharing a connection may genuinely book three or four times for
+   * the same fundraiser, and a household that can't get a ticket is a worse
+   * outcome than a card tester who gets twelve tries instead of ten.
+   */
+  register: { windowSec: 3600, max: 12 },
+  /**
    * Entering the demo club, per IP. Generous — a curious visitor may open it
    * two or three times — but bounded, because every entry writes a session to
    * KV and an unthrottled session factory is a cheap way to fill it.

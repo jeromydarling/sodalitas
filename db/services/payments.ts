@@ -22,6 +22,7 @@ import {
 } from "@payments/stripe";
 import { recordPayment, type InvoiceRow } from "./dues";
 import { logInteraction } from "./interactions";
+import { confirmPaid } from "./events";
 
 export interface PaymentSettingsRow {
   id: string;
@@ -414,6 +415,78 @@ export async function checkoutDonation(
   );
 }
 
+/**
+ * Start a checkout for event tickets.
+ *
+ * The one thing on this platform that carries a fee of ours, and the only
+ * `startCheckout` caller that passes `platformFeeCents`. It is computed by
+ * `domain/events.ts` from what the club charged, capped, and already stored on
+ * the registration before we get here — so the number the payer was shown, the
+ * number on the registration and the number Stripe takes are the same number,
+ * rather than three independent calculations that agree until one of them
+ * doesn't.
+ *
+ * The fee rides on the club's own direct charge as an `application_fee_amount`
+ * inside `payment_intent_data`. Anywhere else and Stripe accepts the request
+ * and takes nothing.
+ */
+export async function checkoutTickets(
+  env: StripeEnv,
+  db: TenantDb,
+  input: {
+    clubId: string;
+    clubName: string;
+    registrationId: string;
+    eventTitle: string;
+    /** What the club charged for the tickets, before any covered card fee. */
+    amountCents: number;
+    coverFee: boolean;
+    platformFeeCents: number;
+    personId: string | null;
+    payerName?: string | null;
+    payerEmail?: string | null;
+  },
+  now: string,
+): Promise<CheckoutResult> {
+  const cap = await capability(env, db, input.clubId);
+  if (!cap.clubReady) {
+    throw new PaymentUnavailable(
+      cap.blockedBecause ?? "This club can't take card payments yet. Ask them about paying another way.",
+    );
+  }
+  if (input.amountCents < MIN_CHARGE_CENTS) {
+    throw new PaymentUnavailable(
+      `The smallest a card can be charged is ${formatCents(MIN_CHARGE_CENTS, cap.currency)}.`,
+    );
+  }
+  if (input.amountCents > MAX_CHARGE_CENTS) {
+    throw new PaymentUnavailable(
+      `That's larger than we'll take online (${formatCents(MAX_CHARGE_CENTS, cap.currency)}). Please contact the club directly.`,
+    );
+  }
+
+  return startCheckout(
+    env,
+    db,
+    {
+      clubId: input.clubId,
+      accountId: cap.accountId!,
+      currency: cap.currency,
+      kind: "ticket",
+      amountCents: input.amountCents,
+      coverFee: input.coverFee,
+      platformFeeCents: Math.max(0, Math.round(input.platformFeeCents)),
+      personId: input.personId,
+      invoiceId: null,
+      donorName: input.payerName ?? null,
+      payerEmail: input.payerEmail ?? null,
+      productName: `${input.eventTitle} — ${input.clubName}`,
+      registrationId: input.registrationId,
+    },
+    now,
+  );
+}
+
 async function startCheckout(
   env: StripeEnv,
   db: TenantDb,
@@ -421,8 +494,11 @@ async function startCheckout(
     clubId: string;
     accountId: string;
     currency: string;
-    kind: "dues" | "donation";
+    kind: "dues" | "donation" | "ticket";
     amountCents: number;
+    platformFeeCents?: number;
+    /** Set for tickets: the booking this checkout is holding a seat for. */
+    registrationId?: string | null;
     coverFee: boolean;
     personId: string | null;
     invoiceId: string | null;
@@ -450,6 +526,7 @@ async function startCheckout(
     fee_cents: fees.feeCents,
     covered_fee: fees.covered ? 1 : 0,
     charged_cents: fees.chargedCents,
+    platform_fee_cents: input.platformFeeCents ?? 0,
     stripe_session_id: null,
     stripe_account_id: input.accountId,
     status: "open",
@@ -466,6 +543,7 @@ async function startCheckout(
     customerEmail: input.payerEmail,
     successUrl: `${env.APP_URL}/pay/thanks?c=${checkoutId}`,
     cancelUrl: `${env.APP_URL}/pay/cancelled?c=${checkoutId}`,
+    applicationFeeCents: input.platformFeeCents ?? 0,
     // Metadata is how the webhook finds this row again. Tenant included
     // because the event arrives with no session and no cookie — it is the only
     // thing that tells us whose ledger to write to.
@@ -569,6 +647,7 @@ export async function applyCheckoutCompleted(
     amount_cents: number;
     fee_cents: number;
     covered_fee: number;
+    platform_fee_cents: number;
     stripe_account_id: string | null;
     status: string;
   }>("checkout_sessions", checkoutId);
@@ -620,6 +699,46 @@ export async function applyCheckoutCompleted(
     );
     if (!applied) {
       return { handled: false, note: `invoice ${row.invoice_id} vanished before payment applied` };
+    }
+  } else if (row.kind === "ticket") {
+    /**
+     * A paid seat.
+     *
+     * The registration is found through its own `checkout_id` rather than a
+     * column on the checkout, so the link points the way it is actually used:
+     * a booking knows what it's waiting on. `confirmPaid` is idempotent — it
+     * returns early unless the row is still `pending` — which matters because
+     * Stripe will happily deliver this event twice.
+     */
+    await db.insert("payments", {
+      id: newId("payment"),
+      club_id: row.club_id,
+      person_id: row.person_id,
+      invoice_id: null,
+      kind: "event",
+      amount_cents: row.amount_cents,
+      fee_cents: row.fee_cents,
+      platform_fee_cents: row.platform_fee_cents,
+      covered_fee: row.covered_fee,
+      method: "stripe",
+      external_id: externalId,
+      received_on: receivedOn,
+      notes: row.donor_name ? `Tickets — ${row.donor_name}` : "Event tickets",
+      created_at: now,
+    });
+
+    const registration = await db.first<{ id: string }>("event_registrations", {
+      columns: "id",
+      where: "checkout_id = ?",
+      params: [row.id],
+    });
+    if (registration) {
+      await confirmPaid(db, registration.id, now);
+    } else {
+      // The money arrived and we can't find the seat it was for. Recorded in
+      // the ledger regardless — the club is not out of pocket — but this needs
+      // a human, so say so rather than returning a quiet success.
+      console.error(`[payments] ticket checkout ${row.id} has no registration`);
     }
   } else {
     await db.insert("payments", {

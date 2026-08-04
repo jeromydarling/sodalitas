@@ -28,6 +28,7 @@ import {
   CalendarDays, Users, Heart, Globe, Handshake, Award, BookOpen, Leaf,
   Droplet, GraduationCap, Stethoscope, Home, UtensilsCrossed, Megaphone,
   MapPin, Clock, Mail, Phone, Sparkles, CircleDot, ArrowRight, Quote,
+  Ticket, FileText, Download,
 } from "lucide-react";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -52,6 +53,8 @@ const ICONS: Record<string, typeof CalendarDays> = {
   mail: Mail,
   phone: Phone,
   sparkles: Sparkles,
+  ticket: Ticket,
+  "file-text": FileText,
   // The wheel, standing in for the Rotary emblem we're not licensed to draw.
   wheel: CircleDot,
 };
@@ -86,12 +89,34 @@ export interface LiveProject {
   area: string | null;
 }
 
+export interface LiveEvent {
+  slug: string;
+  title: string;
+  summary: string | null;
+  date: string;
+  time: string | null;
+  location: string | null;
+  /** The cheapest ticket, in cents. Null when the event has no tickets yet. */
+  fromCents: number | null;
+  full: boolean;
+}
+
+export interface LiveDocument {
+  id: string;
+  title: string;
+  size: string;
+  folder: string | null;
+  yearTag: string | null;
+}
+
 export interface RenderContext {
   club: { name: string; slug: string; city: string | null; state: string | null };
   /** Path prefix for links. "" on a club's own domain, "/club/slug" on ours. */
   base: string;
   meetings: LiveMeeting[];
   projects: LiveProject[];
+  events: LiveEvent[];
+  documents: LiveDocument[];
   officers: { name: string; office: string }[];
   donations: {
     amounts: number[];
@@ -338,6 +363,109 @@ function MeetingsBlock({ block, ctx }: { block: Block; ctx: RenderContext }) {
           ))}
         </ul>
       )}
+    </Section>
+  );
+}
+
+/**
+ * What's on.
+ *
+ * Renders nothing when there is nothing on, unless the club wrote a line to
+ * say so. An events section reading "no events" on a club's home page is worse
+ * than no events section — it is a public statement that nothing is happening.
+ */
+function EventsBlock({ block, ctx }: { block: Block; ctx: RenderContext }) {
+  const events = ctx.events.slice(0, num(block.count, 3));
+  const empty = str(block.emptyText);
+  if (events.length === 0 && !empty) return null;
+
+  return (
+    <Section tone="tint">
+      <Heading>{str(block.heading) || "What's on"}</Heading>
+      <Prose text={block.intro} className="mt-3 max-w-2xl" />
+
+      {events.length === 0 ? (
+        <p className="mt-6 text-[var(--site-ink-600)]">{empty}</p>
+      ) : (
+        <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {events.map((e) => (
+            <li key={e.slug}>
+              <Link
+                to={`${ctx.base}/events/${e.slug}`}
+                prefetch="intent"
+                className="flex h-full flex-col rounded-[calc(var(--site-radius)*1.4)] border border-[var(--site-ink-200)] p-6 transition hover:border-[var(--site-ink-400)]"
+              >
+                <span className="text-xs font-medium tracking-wide text-[var(--site-brand-700)] uppercase">
+                  {[formatDate(e.date), e.time].filter(Boolean).join(" · ")}
+                </span>
+                <span className="mt-2 font-[family-name:var(--site-font-display)] text-lg font-semibold text-[var(--site-ink-900)]">
+                  {e.title}
+                </span>
+                {e.summary && (
+                  <span className="mt-1.5 flex-1 text-[0.95rem] leading-relaxed text-[var(--site-ink-700)]">
+                    {e.summary}
+                  </span>
+                )}
+                <span className="mt-4 flex items-center gap-2 text-sm text-[var(--site-ink-500)]">
+                  {e.location && <span>{e.location}</span>}
+                  {block.showPrice !== false && e.fromCents !== null && (
+                    <span className="ml-auto font-medium text-[var(--site-ink-700)]">
+                      {e.fromCents === 0 ? "Free" : `From ${money(e.fromCents)}`}
+                    </span>
+                  )}
+                </span>
+                {e.full && (
+                  <span className="mt-2 text-sm text-[var(--site-ink-500)]">
+                    Full — waiting list open
+                  </span>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
+  );
+}
+
+/**
+ * The public shelf of the club's library.
+ *
+ * Only documents the library itself marked public ever reach here — the block
+ * has no way to name a document, deliberately, so there is one control over
+ * who can read what and it lives with the file rather than with the page.
+ */
+function DocumentsBlock({ block, ctx }: { block: Block; ctx: RenderContext }) {
+  const wanted = str(block.folderSlug);
+  const documents = ctx.documents
+    .filter((d) => !wanted || d.folder === wanted)
+    .slice(0, num(block.count, 6));
+  if (documents.length === 0) return null;
+
+  return (
+    <Section>
+      <Heading>{str(block.heading) || "Documents"}</Heading>
+      <Prose text={block.intro} className="mt-3 max-w-2xl" />
+      <ul className="mt-8 divide-y divide-[var(--site-ink-200)]">
+        {documents.map((d) => (
+          <li key={d.id}>
+            <a
+              href={`${ctx.base}/documents/${d.id}`}
+              className="flex items-center gap-3 py-3.5 text-[var(--site-ink-800)] hover:text-[var(--site-brand-700)]"
+            >
+              <FileText className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
+              <span className="flex-1 font-medium">{d.title}</span>
+              {d.yearTag && (
+                <span className="text-sm text-[var(--site-ink-500)]">{d.yearTag}</span>
+              )}
+              {block.showSize !== false && (
+                <span className="text-sm text-[var(--site-ink-500)]">{d.size}</span>
+              )}
+              <Download className="size-4 shrink-0 text-[var(--site-ink-400)]" strokeWidth={1.75} aria-hidden />
+            </a>
+          </li>
+        ))}
+      </ul>
     </Section>
   );
 }
@@ -896,6 +1024,8 @@ export function RenderBlock({ block, ctx }: { block: Block; ctx: RenderContext }
     case "stats": return <StatsBlock block={block} />;
     case "cards": return <CardsBlock block={block} ctx={ctx} />;
     case "meetings": return <MeetingsBlock block={block} ctx={ctx} />;
+    case "events": return <EventsBlock block={block} ctx={ctx} />;
+    case "documents": return <DocumentsBlock block={block} ctx={ctx} />;
     case "projects": return <ProjectsBlock block={block} ctx={ctx} />;
     case "officers": return <OfficersBlock block={block} ctx={ctx} />;
     case "join": return <JoinBlock block={block} ctx={ctx} />;

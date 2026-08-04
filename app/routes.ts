@@ -35,6 +35,11 @@ export default [
   // exactly the same code.
   route("club/:clubSlug", "routes/public-club/index.tsx", { id: "club-home" }),
   route("club/:clubSlug/media/:mediaId", "routes/public-club/media.tsx"),
+  // Before the catch-all page slug. A club could otherwise name a page
+  // "events" and quietly shadow its own registration pages.
+  route("club/:clubSlug/events", "routes/public-club/events.tsx", { id: "club-events" }),
+  route("club/:clubSlug/events/:eventSlug", "routes/public-club/events.tsx", { id: "club-event" }),
+  route("club/:clubSlug/documents/:documentId", "routes/public-club/document.tsx"),
   route("club/:clubSlug/:pageSlug", "routes/public-club/index.tsx", { id: "club-page" }),
 
   // ── Where Stripe sends a payer back to. No layout: these are the last thing

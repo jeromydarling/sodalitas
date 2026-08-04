@@ -16,6 +16,9 @@ import { checkRateLimit, recordFailure } from "@worker/auth/ratelimit";
 import { clientIp, type Env } from "@worker/context";
 import { capability, checkoutDonation, PaymentUnavailable } from "@db/services/payments";
 import { siteFor, pageBySlug, siteConfig, mediaByIds } from "@db/services/sites";
+import { availability, listEvents, listTicketTypes } from "@db/services/events";
+import { listDocuments } from "@db/services/documents";
+import { humanBytes } from "@domain/documents";
 import { parseBlocks, liveDataNeeded } from "@domain/blocks";
 import { disclosureFor, analyticsScripts } from "@domain/analytics";
 import { SiteShell, RenderBlocks, type RenderContext } from "~/site/render";
@@ -237,7 +240,7 @@ async function loadSitePage(
       : []),
   ]);
 
-  const [config, meetings, projects, officers, payments, media] = await Promise.all([
+  const [config, meetings, projects, events, documents, officers, payments, media] = await Promise.all([
     siteConfig(db, site),
     needs.meetings
       ? listMeetings(db, club.id, { from: today, limit: needs.meetings * 2, order: "asc" })
@@ -251,6 +254,20 @@ async function loadSitePage(
           limit: needs.projects,
         })
       : Promise.resolve([]),
+
+    // Public, open, still to come. Cheapest ticket and whether it's full come
+    // from the same functions the event page uses, so the card and the page
+    // can't disagree about whether there's room.
+    needs.events
+      ? publicEvents(db, club.id, today, new Date().toISOString(), needs.events)
+      : Promise.resolve([]),
+
+    // Only what the library itself marked public. The block cannot name a
+    // document, so this is the single control over who reads what.
+    needs.documents
+      ? listDocuments(db, { clubId: club.id, audience: "public", limit: needs.documents * 4 })
+      : Promise.resolve([]),
+
     needs.officers
       ? db.raw<{ first_name: string; last_name: string; preferred_name: string | null; role_key: string }>(
           `SELECT p.first_name, p.last_name, p.preferred_name, r.role_key
@@ -266,6 +283,19 @@ async function loadSitePage(
     needs.donate ? capability(env, db, club.id) : Promise.resolve(null),
     mediaByIds(db, mediaIds),
   ]);
+
+  // Folder slugs, only when a document block asked to filter by one. The block
+  // stores a slug rather than an id so a club can retype it without the page
+  // pointing at a folder that was deleted and recreated.
+  const folderSlugs = new Map<string, string>();
+  if (documents.length > 0 && needs.documentFolders.length > 0) {
+    const folders = await db.all<{ id: string; slug: string }>("document_folders", {
+      columns: "id, slug",
+      where: "club_id = ?",
+      params: [club.id],
+    });
+    for (const f of folders) folderSlugs.set(f.id, f.slug);
+  }
 
   const canonicalBase = ownDomain ? `https://${ownDomain}` : `${env.APP_URL}/club/${club.slug}`;
 
@@ -315,6 +345,14 @@ async function loadSitePage(
         speaker: m.speaker_name,
       })),
     projects: projects.map((p) => ({ name: p.name, summary: p.summary, area: p.area_of_focus })),
+    events,
+    documents: documents.map((d) => ({
+      id: d.id,
+      title: d.title,
+      size: humanBytes(d.bytes),
+      folder: folderSlugs.get(d.folder_id ?? "") ?? null,
+      yearTag: d.year_tag,
+    })),
     officers: officers.map((o) => ({
       name: `${o.preferred_name || o.first_name} ${o.last_name}`,
       office: OFFICE_LABELS[o.role_key] ?? "Officer",
@@ -336,6 +374,46 @@ async function loadSitePage(
     })),
     disclosure: disclosureFor(config.analytics),
   };
+}
+
+/**
+ * The events a club's own site may show.
+ *
+ * Public, open, and still to come — and the cheapest ticket, so a card can say
+ * "From $35" without the visitor having to open the page to find out whether
+ * they can afford it. `availability` is the same call the event page makes, so
+ * a card that says there's room and a page that says it's full cannot both be
+ * on screen.
+ */
+async function publicEvents(
+  db: ReturnType<typeof tenantDb>,
+  clubId: string,
+  today: string,
+  now: string,
+  count: number,
+) {
+  const rows = await listEvents(db, clubId, { from: today, status: "open", limit: count * 2 });
+  const visible = rows.filter((e) => e.visibility === "public").slice(0, count);
+
+  return Promise.all(
+    visible.map(async (e) => {
+      const [types, avail] = await Promise.all([
+        listTicketTypes(db, e.id),
+        availability(db, e, now),
+      ]);
+      const sellable = types.filter((t) => t.active === 1 && t.members_only === 0);
+      return {
+        slug: e.slug,
+        title: e.title,
+        summary: e.summary,
+        date: e.starts_on,
+        time: e.starts_at_time,
+        location: e.location,
+        fromCents: sellable.length ? Math.min(...sellable.map((t) => t.price_cents)) : null,
+        full: avail.full,
+      };
+    }),
+  );
 }
 
 /**
@@ -539,6 +617,8 @@ function BuiltSite({
     base: loaderData.base,
     meetings: loaderData.meetings,
     projects: loaderData.projects,
+    events: loaderData.events,
+    documents: loaderData.documents,
     officers: loaderData.officers,
     donations: loaderData.donations,
     media: new Map(loaderData.media.map((m) => [m.id, m])),

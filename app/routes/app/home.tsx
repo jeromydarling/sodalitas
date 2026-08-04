@@ -126,11 +126,11 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
                   <Link
                     to={s.href}
                     prefetch="intent"
-                    className={
+                    className={`-my-1.5 inline-block py-1.5 text-sm ${
                       s.done
-                        ? "text-sm text-ink-500 line-through"
-                        : "text-sm font-medium text-ink-900 hover:text-brand-600 dark:text-ink-100"
-                    }
+                        ? "text-ink-500 line-through"
+                        : "font-medium text-ink-900 hover:text-brand-600 dark:text-ink-100"
+                    }`}
                   >
                     {s.label}
                   </Link>

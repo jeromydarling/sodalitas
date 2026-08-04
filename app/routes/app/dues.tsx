@@ -288,7 +288,7 @@ export default function Dues({ loaderData, actionData }: Route.ComponentProps) {
                   <Link
                     to={`/app/people/${i.personId}`}
                     prefetch="intent"
-                    className="text-ink-900 hover:text-brand-600 dark:text-ink-100"
+                    className="-my-1.5 block py-1.5 text-ink-900 hover:text-brand-600 dark:text-ink-100"
                   >
                     {i.name}
                   </Link>
@@ -318,7 +318,7 @@ export default function Dues({ loaderData, actionData }: Route.ComponentProps) {
                   <Td>
                     {(i.status === "open" || i.status === "partial") && (
                       <details>
-                        <summary className="cursor-pointer text-sm text-ink-500 hover:text-ink-700">
+                        <summary className="-my-2 cursor-pointer py-2 text-sm text-ink-500 hover:text-ink-700">
                           Record
                         </summary>
                         <div className="mt-2 space-y-3">

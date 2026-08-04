@@ -147,7 +147,7 @@ export default function People({ loaderData }: Route.ComponentProps) {
                     <Link
                       to={`/app/people/${p.slug ?? p.id}`}
                       prefetch="intent"
-                      className="font-medium text-ink-900 hover:text-brand-600 dark:text-ink-100"
+                      className="-my-1.5 block py-1.5 font-medium text-ink-900 hover:text-brand-600 dark:text-ink-100"
                     >
                       {p.name}
                     </Link>

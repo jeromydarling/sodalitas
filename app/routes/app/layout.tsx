@@ -2,6 +2,7 @@ import { Form, Link, NavLink, Outlet, redirect } from "react-router";
 import type { Route } from "./+types/layout";
 import { envContext } from "@worker/loadContext";
 import { brand } from "@content/brand";
+import { Logo, Icon } from "~/brand";
 import { getContext } from "@worker/context";
 import type { Capability } from "@domain/roles";
 
@@ -65,15 +66,19 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
         </div>
       )}
       <header className="border-b border-ink-200 bg-white/85 backdrop-blur-md dark:border-ink-800 dark:bg-ink-900/85">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-6">
             <Link
               to="/app"
-              className="shrink-0 font-semibold tracking-tight text-ink-900 dark:text-ink-50"
+              className="-m-2 flex shrink-0 items-center gap-2 p-2 font-semibold tracking-tight text-ink-900 dark:text-ink-50"
             >
-              {brand.name}
+              <Logo className="h-6 w-6" />
+              <span className="hidden sm:inline">{brand.name}</span>
             </Link>
-            <nav className="flex gap-5 overflow-x-auto text-sm">
+            {/* Wide screens get the row. Below lg it went into a clipped
+                horizontal scroller with no affordance — "Meetings" rendered as
+                "Me" and eight sections were unreachable on a phone. */}
+            <nav className="hidden gap-5 text-sm lg:flex" aria-label="Sections">
               {loaderData.nav.map((item) => (
                 <NavLink
                   key={item.to}
@@ -92,21 +97,74 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
             </nav>
           </div>
 
-          <div className="flex shrink-0 items-center gap-4 text-sm">
+          <div className="flex shrink-0 items-center gap-3 text-sm">
             <div className="hidden text-right sm:block">
               <p className="text-ink-800 dark:text-ink-200">{loaderData.user.name}</p>
               {loaderData.titles.length > 0 && (
                 <p className="text-xs text-ink-500">{loaderData.titles.join(" · ")}</p>
               )}
             </div>
-            <Form method="post" action="/logout">
+            <Form method="post" action="/logout" className="hidden sm:block">
               <button
                 type="submit"
-                className="text-ink-500 hover:text-ink-800 dark:hover:text-ink-200"
+                className="rounded-lg px-2 py-2 text-ink-500 hover:text-ink-800 dark:hover:text-ink-200"
               >
                 Sign out
               </button>
             </Form>
+
+            {/* Below lg, everything lives in here. A <details> works before
+                hydration and with JavaScript off, which matters most on the
+                phone a secretary is using at the door of a meeting. */}
+            <details className="group relative lg:hidden">
+              <summary
+                className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-ink-700 marker:content-none hover:bg-ink-100 dark:text-ink-300 dark:hover:bg-ink-800 [&::-webkit-details-marker]:hidden"
+                aria-label="Menu"
+              >
+                <Icon.Menu className="group-open:hidden" />
+                <Icon.Close className="hidden group-open:block" />
+              </summary>
+              <div className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-ink-200 bg-white p-2 shadow-lg dark:border-ink-800 dark:bg-ink-900">
+                <div className="border-b border-ink-200 px-3 pb-2 sm:hidden dark:border-ink-800">
+                  <p className="truncate text-sm text-ink-800 dark:text-ink-200">
+                    {loaderData.user.name}
+                  </p>
+                  {loaderData.titles.length > 0 && (
+                    <p className="truncate text-xs text-ink-500">
+                      {loaderData.titles.join(" · ")}
+                    </p>
+                  )}
+                </div>
+                <nav className="pt-1" aria-label="Sections">
+                  {loaderData.nav.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.end}
+                      className={({ isActive }) =>
+                        `block rounded-lg px-3 py-2.5 text-sm ${
+                          isActive
+                            ? "bg-brand-500/10 font-medium text-brand-600"
+                            : "text-ink-700 hover:bg-ink-100 dark:text-ink-300 dark:hover:bg-ink-800"
+                        }`
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </nav>
+                <div className="mt-1.5 border-t border-ink-200 pt-1.5 dark:border-ink-800">
+                  <Form method="post" action="/logout">
+                    <button
+                      type="submit"
+                      className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-ink-600 hover:bg-ink-100 dark:text-ink-400 dark:hover:bg-ink-800"
+                    >
+                      Sign out
+                    </button>
+                  </Form>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
       </header>

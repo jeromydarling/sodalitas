@@ -134,9 +134,12 @@ export default function Home() {
                 few hundred bytes rather than a few hundred kilobytes.
                 Offset rather than overlapped — the floating card used to sit on
                 top of the roster's own rows and hang out of the section. */}
-            <div className="hidden space-y-4 lg:block">
+            {/* On a phone this used to be hidden entirely, so the visitors
+                most likely to be deciding from this page alone saw none of the
+                product. One screen there, both from lg up. */}
+            <div className="space-y-4">
               <RosterScreen />
-              <SignalsScreen className="ml-8" />
+              <SignalsScreen className="hidden lg:block lg:ml-8" />
             </div>
           </div>
 

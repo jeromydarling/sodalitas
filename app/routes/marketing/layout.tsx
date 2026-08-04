@@ -62,7 +62,7 @@ export default function MarketingLayout() {
       <header className="sticky top-0 z-40 border-b border-ink-200/70 bg-ink-50/85 backdrop-blur-md dark:border-ink-800/70 dark:bg-ink-950/85">
         <nav className="mx-auto max-w-6xl px-6" aria-label="Main">
           <div className="flex items-center justify-between gap-6 py-3.5">
-            <Link to="/" prefetch="intent" className="flex items-center gap-2.5">
+            <Link to="/" prefetch="intent" className="-m-2 flex items-center gap-2.5 p-2">
               <Logo className="h-7 w-7 shrink-0" />
               <span className="text-lg font-semibold tracking-tight text-ink-900 dark:text-ink-50">
                 {brand.name}
@@ -154,7 +154,7 @@ export default function MarketingLayout() {
         <div className="mx-auto max-w-6xl px-6 py-14">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <Link to="/" className="flex items-center gap-2.5">
+              <Link to="/" className="-m-2 flex items-center gap-2.5 p-2">
                 <Logo className="h-7 w-7" />
                 <span className="font-semibold tracking-tight text-ink-900 dark:text-ink-50">
                   {brand.name}
@@ -171,10 +171,12 @@ export default function MarketingLayout() {
                 <ul className="mt-3 space-y-2">
                   {col.links.map((l) => (
                     <li key={l.to}>
+                      {/* -my-1.5/py-1.5 grows the tap target to ~36px without
+                          opening up the visual rhythm of the list. */}
                       <Link
                         to={l.to}
                         prefetch="intent"
-                        className="text-sm text-ink-600 transition-colors hover:text-brand-600 dark:text-ink-400"
+                        className="-my-1.5 inline-block py-1.5 text-sm text-ink-600 transition-colors hover:text-brand-600 dark:text-ink-400"
                       >
                         {l.label}
                       </Link>

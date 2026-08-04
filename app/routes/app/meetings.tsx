@@ -183,7 +183,7 @@ function MeetingTable({ meetings }: { meetings: Route.ComponentProps["loaderData
               <Link
                 to={`/app/meetings/${m.id}`}
                 prefetch="intent"
-                className="font-medium text-ink-900 hover:text-brand-600 dark:text-ink-100"
+                className="-my-1.5 block py-1.5 font-medium text-ink-900 hover:text-brand-600 dark:text-ink-100"
               >
                 {formatDate(m.date)}
               </Link>

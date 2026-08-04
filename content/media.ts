@@ -120,7 +120,7 @@ export const MEDIA: MediaSlot[] = [
       "from a high window, work half finished.",
     alt: "Volunteers sorting donated food into boxes at a service project",
     aspect: "4/3",
-    usedOn: "/features/projects",
+    usedOn: "/features/committees",
   },
   {
     key: "handover-spot",

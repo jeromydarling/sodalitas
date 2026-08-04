@@ -3,6 +3,7 @@ import type { Route } from "./+types/contact";
 import { envContext } from "@worker/loadContext";
 import { brand } from "@content/brand";
 import { Icon, Reveal, Eyebrow } from "~/brand";
+import { Media, hasMedia } from "~/media";
 import { marketingMeta } from "~/seo";
 import { sendTransactional } from "@emails/send";
 import { scoreSubmission } from "@domain/spam";
@@ -144,6 +145,7 @@ export default function Contact({ actionData }: Route.ComponentProps) {
         </div>
 
         <aside className="space-y-6">
+          {hasMedia("contact-spot") && <Media slot="contact-spot" className="hidden lg:block" />}
           <div className="rounded-2xl border border-ink-200 p-6 dark:border-ink-800">
             <h2 className="flex items-center gap-2.5 font-medium text-ink-900 dark:text-ink-100">
               <Icon.Clock className="text-ink-400" />

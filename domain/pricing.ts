@@ -43,6 +43,8 @@ export const PLANS: Record<PlanKey, Plan> = {
       "The membership pipeline, from guest to member",
       "At-risk member signals with the reasons behind them",
       "Tasks and follow-ups",
+      "Free event registration with capacity and a waiting list",
+      "A document library with public, member and board shelves",
       "A public club page with a join form",
       "Email to members and segments",
       "CSV import with a dry run before anything changes",
@@ -65,6 +67,7 @@ export const PLANS: Record<PlanKey, Plan> = {
       "Service projects with volunteers, hours and outcomes",
       "Dues invoicing and payment tracking",
       "Online dues and donations through Stripe",
+      "Paid event tickets, with who came feeding the retention signals",
       "Club health scoring with the drivers shown",
       "Reports and exports",
       "Communio — swap what's working with other clubs",
@@ -228,8 +231,14 @@ export const INCUMBENTS: Incumbent[] = [
       // that used to sit here stopped being true; what remains is the part
       // that still is, and it is a real difference rather than a token one.
       "Free-form website layout and file hosting. Ours is built from fixed section types, which is why a club can't make a page that looks wrong — but a club with someone who wants pixel control will find ours restrictive.",
-      "Event registration and ticketing, with paid signups and a guest list. We don't do this yet at all.",
-      "A document library — bylaws, minutes, budgets, filed and searchable in one place.",
+      // Both of these were blanket concessions until events and the document
+      // library shipped. What is left is what is still true: ClubRunner's
+      // ticketing does more shapes than ours does, and its library nests
+      // deeper. Neither is "we don't do this", and pretending otherwise on a
+      // page whose whole value is candour would be the worst possible place
+      // to be out of date.
+      "More elaborate event ticketing — recurring events, promo codes, and per-event custom pages. Ours covers ticket types, capacity, waitlists and a door list, and stops there.",
+      "A deeper folder tree in the document library. Ours is one level with per-document visibility, which suits a club with forty documents and would not suit an archive.",
       "Longer track record with Rotary International data integration.",
       "Used by roughly 4,000 clubs, so most Rotarians have seen it before.",
     ],

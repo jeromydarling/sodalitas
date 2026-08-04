@@ -135,7 +135,8 @@ export const LEGAL: LegalDoc[] = [
         heading: "Payment",
         paragraphs: [
           "Subscriptions are billed monthly or annually in advance. Annual billing is charged for ten months rather than twelve.",
-          "Dues and donations your club collects are a separate matter entirely: those go through the club's own Stripe account, straight to the club's bank. We never hold that money and we take no percentage of it.",
+          "Money your club collects is a separate matter entirely: it goes through the club's own Stripe account, straight to the club's bank, and we never hold it. We take no percentage of dues or donations.",
+          "Paid event tickets are the single exception, and we would rather state it here than have you discover it. A platform fee of 1% of the ticket price, capped at $1.50 per order, is taken as a Stripe application fee at the moment of payment. Free tickets carry no fee at all. The amount is shown to the payer before they pay and recorded against every registration, so your treasurer can always reconcile it.",
           "Cancel whenever you like. The subscription runs to the end of the period already paid for, and we don't prorate a refund for the remainder unless something went wrong on our side — in which case ask, and we probably will.",
         ],
       },

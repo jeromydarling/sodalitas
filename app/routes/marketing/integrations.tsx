@@ -26,7 +26,7 @@ const WORKING = [
     icon: "Dues" as const,
     name: "Stripe",
     body:
-      "Dues and donations by card. Your club connects its own Stripe account, so the money lands in the club's bank under the club's own tax identity. We take no cut — the subscription pays for the product, not a slice of your dues.",
+      "Dues, donations and event tickets by card. Your club connects its own Stripe account, so the money lands in the club's bank under the club's own tax identity. We take no cut of dues or donations. Paid event tickets carry a small platform fee — 1%, capped at $1.50 an order, nothing on free events — and it's the only money of yours we take.",
   },
   {
     icon: "Mail" as const,

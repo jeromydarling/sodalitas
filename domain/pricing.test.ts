@@ -16,7 +16,11 @@ import {
   PLANS, PLAN_ORDER, INCUMBENTS, SIDECAR_TOOLS, SETUP_OPTIONS,
   annualCents, annualSavingCents, priceCents, calculateSavings,
   formatCents, formatMonthly, ANNUAL_MONTHS_CHARGED,
+  EVENT_FEE, EVENT_FEE_SUMMARY,
 } from "./pricing";
+import { platformFee } from "./events";
+import { LEGAL } from "@content/legal";
+import { FEATURES } from "@content/features";
 
 describe("money is integer cents", () => {
   it("holds every price as a whole number of cents", () => {
@@ -195,14 +199,25 @@ describe("competitor comparison", () => {
     }
   });
 
-  it("still names a real gap, and names it specifically", () => {
+  it("never concedes something we actually ship", () => {
     const cr = INCUMBENTS.find((i) => i.key === "clubrunner")!;
-    // Event registration is the honest remaining hole. It replaced the
-    // blanket "their website builder does more than ours", which stopped
-    // being true the day we shipped one — a concession that has quietly gone
-    // stale is worse than no concession, because it reads as false modesty.
-    expect(cr.betterAt.join(" ")).toMatch(/we don't do this yet/i);
-    expect(cr.betterAt.join(" ")).not.toMatch(/more complete website builder/i);
+    const text = cr.betterAt.join(" ");
+
+    // A concession that has quietly gone stale is worse than no concession.
+    // It reads as false modesty, and it is a false statement about our own
+    // product on the page whose entire value is that it doesn't make any.
+    // This list has now gone stale twice — once for the website builder,
+    // once for events and documents — so the rule is the assertion rather
+    // than any particular sentence.
+    expect(text).not.toMatch(/we don't do (this|that)|we have no|don't have (an?|any) /i);
+
+    // Still named, because the difference is real: ClubRunner's ticketing
+    // handles more shapes and its library nests deeper. The concession
+    // changed shape rather than disappearing, which is the honest outcome of
+    // shipping a first version of something.
+    expect(text).toMatch(/event ticketing/i);
+    expect(text).toMatch(/document library/i);
+    expect(text).not.toMatch(/more complete website builder/i);
   });
 
   it("concedes that DACdb is often already paid for by the district", () => {
@@ -260,5 +275,50 @@ describe("formatting", () => {
       expect(formatCents(plan.monthlyCents)).not.toContain(".");
       expect(formatCents(annualCents(plan))).not.toContain(".");
     }
+  });
+});
+
+// ── The one cut we take ───────────────────────────────────────────────────────
+//
+// This product's whole pitch is that it doesn't take a slice of a club's money.
+// Event tickets are the single exception, and the difference between an honest
+// exception and a nasty surprise is entirely whether it is said out loud in the
+// places somebody would look. These tests are what "said out loud" means.
+
+describe("the event fee is disclosed, everywhere it matters", () => {
+  it("says the rate, the cap and the free case in one sentence", () => {
+    expect(EVENT_FEE_SUMMARY).toMatch(/1%/);
+    expect(EVENT_FEE_SUMMARY).toMatch(/\$1\.50/);
+    expect(EVENT_FEE_SUMMARY).toMatch(/free/i);
+  });
+
+  it("describes what the code actually charges", () => {
+    // The summary is copy; `platformFee` is the money. Nothing stops these
+    // drifting apart except this test.
+    expect(platformFee(10_000)).toBe(Math.round(10_000 * EVENT_FEE.rate));
+    expect(platformFee(1_000_000)).toBe(EVENT_FEE.capCents);
+    expect(EVENT_FEE.rate).toBe(0.01);
+    expect(EVENT_FEE.capCents).toBe(150);
+    expect(platformFee(0)).toBe(0);
+  });
+
+  it("names the exception in the terms, next to the claim it qualifies", () => {
+    const payment = LEGAL.find((d) => d.slug === "terms")
+      ?.sections.find((s) => /payment/i.test(s.heading));
+    expect(payment, "terms should have a payment section").toBeTruthy();
+    const text = payment!.paragraphs.join(" ");
+
+    // Both halves, in the same section. The claim without the exception is
+    // the version that gets a club angry six months in.
+    expect(text).toMatch(/no percentage of dues or donations/i);
+    expect(text).toMatch(/1%/);
+    expect(text).toMatch(/\$1\.50/);
+  });
+
+  it("names it on the events feature page rather than only in the terms", () => {
+    const events = FEATURES.find((f) => f.slug === "events");
+    expect(events, "there should be an events feature page").toBeTruthy();
+    expect(events!.body.join(" ")).toMatch(/1%/);
+    expect(events!.body.join(" ")).toMatch(/\$1\.50/);
   });
 });

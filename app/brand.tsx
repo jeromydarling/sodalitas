@@ -19,7 +19,7 @@ import {
   TrendingDown, Users, UserPlus, CalendarDays, Repeat, CreditCard, HandHeart,
   Network, Globe2, Mail, Upload, ShieldCheck, Check, X, Minus, ArrowRight,
   BookOpen, Plug, Sparkles, Clock, Menu as MenuIcon, Building2, ClipboardList,
-  ChartNoAxesColumn, Search, Bell, Settings2, Quote,
+  ChartNoAxesColumn, Search, Bell, Settings2, Quote, Ticket, FileText,
 } from "lucide-react";
 
 // ── Logo ──────────────────────────────────────────────────────────────────────
@@ -109,6 +109,8 @@ export const Icon = {
   /** The July turnover. */
   Handover: icon(Repeat, "Handover"),
   Dues: icon(CreditCard, "Dues"),
+  Ticket: icon(Ticket, "Ticket"),
+  Document: icon(FileText, "Document"),
   Project: icon(HandHeart, "Project"),
   Committee: icon(Network, "Committee"),
   District: icon(Globe2, "District"),

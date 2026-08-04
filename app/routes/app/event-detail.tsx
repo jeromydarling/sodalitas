@@ -538,6 +538,17 @@ export default function EventDetail({ loaderData, actionData }: Route.ComponentP
                 <Button type="submit" disabled={busy}>
                   Open for registrations
                 </Button>
+                {/* Said here, at the moment the club commits to selling
+                    something, rather than only on a pricing page they read
+                    once. Nobody should find out what we take after the money
+                    has moved. */}
+                {types.some((t) => t.priceCents > 0) && (
+                  <p className="mt-2 max-w-md text-xs text-ink-500">
+                    Payments go to your club's own Stripe account. On paid tickets Sodalitas
+                    takes {EVENT_FEE_SUMMARY.charAt(0).toLowerCase() + EVENT_FEE_SUMMARY.slice(1)}{" "}
+                    It's shown to the payer before they pay, and recorded on every registration.
+                  </p>
+                )}
               </Form>
             )}
             {event.status === "open" && (

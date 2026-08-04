@@ -107,7 +107,7 @@ export default function About() {
               ],
               [
                 "We never hold your money.",
-                "Clubs connect their own Stripe account. Dues and donations land in the club's bank, and we take no percentage of them.",
+                "Clubs connect their own Stripe account, and every payment lands in the club's bank. We take no percentage of dues or donations. Paid event tickets carry 1%, capped at $1.50 an order — named here rather than left for you to find.",
               ],
               [
                 "Access expires on its own.",

@@ -144,6 +144,49 @@ export const FEATURES: Feature[] = [
       "No general ledger or accounting export beyond CSV. It tracks what members owe the club, not the club's books.",
   },
   {
+    slug: "events",
+    name: "Events",
+    title: "The fundraiser fills up, and the club learns something",
+    summary:
+      "Ticketing, capacity, waitlists and a door list — and every registration lands on the member's record.",
+    icon: "Ticket",
+    body: [
+      "Every club system has an events module and they are all the same island. A registration list that knows nothing about the club it belongs to. The auction sells 84 tickets, the module reports 84 tickets, and nobody ever finds out that eleven of them were members who haven't been to a meeting since March, or that the four who booked and didn't come are the same four the retention score has been worried about since February.",
+      "Here a registration is part of the club's history. It appears on the person's timeline. Coming counts as involvement, so the member who never makes a Tuesday but runs the auction every year stops reading as somebody who is drifting — which is the false positive that costs a club its trust in the whole idea. And a no-show is recorded as a no-show, because somebody who booked a table and didn't come is a different thing from somebody who never booked, and it is often the first visible sign of what everything else here exists to catch.",
+      "The money runs on the club's own Stripe account, like dues and donations. Unlike dues and donations, a paid ticket carries a platform fee — 1%, capped at $1.50 an order, nothing at all on free events. It is stated on the page before anybody pays and recorded against every registration.",
+    ],
+    does: [
+      "Ticket types with their own prices and limits — member, guest, table of eight",
+      "Capacity that counts seats rather than bookings, so a table of eight is eight",
+      "A waiting list that promotes automatically the moment somebody cancels, and never charges anybody who hasn't got a place",
+      "A door list you can work from a phone, by name or by ticket code",
+      "Attendance and no-shows written straight onto each person's record",
+    ],
+    limit:
+      "One event at a time. No recurring events, no promo codes, no per-event custom page — the club's website builder makes the page, and this makes the tickets.",
+  },
+  {
+    slug: "documents",
+    name: "Documents",
+    title: "The bylaws stop living in one person's email",
+    summary:
+      "Bylaws, minutes, budgets and grant applications, filed by Rotary year, with public, member and board shelves.",
+    icon: "Document",
+    body: [
+      "Ask a club for its constitution and you will usually get a forwarded email from a secretary who left in 2019. Ask for the minutes of the meeting where the decision was made and you will often get nothing at all. The club's paperwork lives in whoever happened to be holding it, and every July it moves house and loses something.",
+      "Three things make this more than a folder of files. Visibility is per document — public documents can appear on the club's own website, members' documents need a login, board papers need the office — so one library serves three audiences without anybody maintaining three copies. A folder's setting is a floor its contents can never rise above, which is the check that stops the minutes ending up on the website. And uploading a new version supersedes the old one rather than overwriting it, because 'what did it say before we amended it' gets asked at exactly the wrong moment.",
+    ],
+    does: [
+      "Public, members-only and board-only, decided per document and shown on every row",
+      "A folder that can only ever narrow what's in it, never widen it",
+      "Versions that supersede rather than overwrite, so the amended bylaws still show what they replaced",
+      "Filed by Rotary year, because July to June is the unit a club actually thinks in",
+      "Public documents publishable straight onto the club's own website",
+    ],
+    limit:
+      "One level of folders, and search covers titles and filenames rather than the contents of the files. It is a club's filing cabinet, not a document management system.",
+  },
+  {
     slug: "handover",
     name: "July handover",
     title: "Survive the handover with the club's memory intact",

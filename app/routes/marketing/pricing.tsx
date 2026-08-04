@@ -31,10 +31,41 @@ const FAQS = [
     a: "Yes. One subscription, no per-club charge and no member limit. A district with 60 clubs pays the same as a district with 12.",
   },
   {
+    q: "Do you take a cut of our dues or donations?",
+    a: "No. Those run on your club's own Stripe account into your club's own bank, and we take no percentage of either. Event tickets are the one exception and the only one: 1% of paid tickets, never more than $1.50 an order, and nothing at all on free events.",
+  },
+  {
     q: "Can we cancel?",
     a: "Any time, and you can export everything first. Your data leaves with you.",
   },
 ];
+
+function MoneyCard({
+  label,
+  take,
+  note,
+  accent = false,
+}: {
+  label: string;
+  take: string;
+  note: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={[
+        "rounded-xl border p-5",
+        accent
+          ? "border-brand-500 bg-white dark:bg-ink-900"
+          : "border-ink-200 bg-white/60 dark:border-ink-800 dark:bg-ink-900/40",
+      ].join(" ")}
+    >
+      <div className="text-xs font-medium tracking-wide text-ink-500 uppercase">{label}</div>
+      <div className="mt-1 text-xl font-semibold text-ink-900 dark:text-ink-100">{take}</div>
+      <p className="mt-2 text-sm text-pretty text-ink-600 dark:text-ink-400">{note}</p>
+    </div>
+  );
+}
 
 export default function Pricing() {
   return (
@@ -134,6 +165,64 @@ export default function Pricing() {
               </Reveal>
             );
           })}
+        </div>
+      </section>
+
+      {/* ── What we take out of the money a club collects ──
+          Its own section, above the setup options, because "what does it cost"
+          and "does any of our money go to you" are different questions and a
+          club that finds the second answer in a footnote is right to be
+          annoyed about it. */}
+      <section className="border-t border-ink-200 dark:border-ink-800">
+        <div className="mx-auto max-w-4xl px-6 py-14">
+          <h2 className="text-2xl font-semibold text-ink-900 dark:text-ink-100">
+            The money your club collects
+          </h2>
+          <p className="mt-3 max-w-2xl text-pretty text-ink-600 dark:text-ink-400">
+            Every card payment runs on your club's own Stripe account, into your club's own
+            bank, under your club's own tax identity. We never hold it. Here is the whole
+            of what we take out of it:
+          </p>
+
+          <div className="mt-8 grid gap-5 sm:grid-cols-3">
+            <MoneyCard
+              label="Dues"
+              take="Nothing"
+              note="Not a percentage, not a per-transaction charge. The subscription pays for the product."
+            />
+            <MoneyCard
+              label="Donations"
+              take="Nothing"
+              note="A gift to your club is your club's. We have never taken a slice of one and don't intend to."
+            />
+            <MoneyCard
+              label="Event tickets"
+              take="1%, capped at $1.50"
+              note="And nothing at all on free tickets, which is most club events."
+              accent
+            />
+          </div>
+
+          <div className="mt-8 rounded-xl border border-ink-200 p-5 dark:border-ink-800">
+            <h3 className="font-medium text-ink-900 dark:text-ink-100">
+              Why tickets and not the rest
+            </h3>
+            <p className="mt-2 text-pretty text-ink-600 dark:text-ink-400">
+              Ticketing is the one place a club would otherwise be paying somebody else.
+              Eventbrite takes roughly 3.7% plus $1.79 a ticket, so a {formatCents(3500)}{" "}
+              dinner ticket costs about {formatCents(309)} there and{" "}
+              {formatCents(35)} here. The cap is the part that matters: a{" "}
+              {formatCents(200000)} table sponsorship costs your club{" "}
+              {formatCents(150)}, not {formatCents(2000)}. A percentage with no ceiling
+              would turn the one big fundraiser you run each year into our best month, and
+              that is not a business we want.
+            </p>
+            <p className="mt-3 text-sm text-ink-500">
+              Stripe's own processing fee is separate and goes to Stripe, on every card
+              payment, exactly as it would anywhere else. Your treasurer sees all three
+              numbers — charged, Stripe's fee, ours — on every registration.
+            </p>
+          </div>
         </div>
       </section>
 

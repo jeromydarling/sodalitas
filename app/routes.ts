@@ -24,7 +24,18 @@ export default [
   ]),
 
   // ── Public club pages (the ClubRunner counter) ────────────────────────────
-  route("club/:clubSlug", "routes/public-club/index.tsx"),
+  //
+  // One file serves three shapes: the club's built site, a page within it, and
+  // the single page a club had before websites existed. Same file because they
+  // share the join form and the donation flow, and duplicating those to split
+  // the routes would mean two places to keep the spam defences in step.
+  //
+  // A club on its own domain is rewritten into these same paths by the Worker,
+  // so `rotaryclubofsomewhere.org/visit` and `/club/somewhere/visit` run
+  // exactly the same code.
+  route("club/:clubSlug", "routes/public-club/index.tsx", { id: "club-home" }),
+  route("club/:clubSlug/media/:mediaId", "routes/public-club/media.tsx"),
+  route("club/:clubSlug/:pageSlug", "routes/public-club/index.tsx", { id: "club-page" }),
 
   // ── Where Stripe sends a payer back to. No layout: these are the last thing
   //    somebody sees after handing over money, and they load in one hop.

@@ -19,6 +19,7 @@ export default defineConfig({
       "@emails": new URL("./emails", import.meta.url).pathname,
       "@ai": new URL("./ai", import.meta.url).pathname,
       "@payments": new URL("./payments", import.meta.url).pathname,
+      "@sites": new URL("./sites", import.meta.url).pathname,
     },
   },
   server: {

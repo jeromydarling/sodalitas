@@ -1,6 +1,6 @@
 import { Form, data, redirect, useNavigation } from "react-router";
 import type { Route } from "./+types/index";
-import { envContext } from "@worker/loadContext";
+import { envContext, siteRequestContext, type SiteRequest } from "@worker/loadContext";
 import { brand } from "@content/brand";
 import { marketingMeta, jsonLd } from "~/seo";
 import { tenantDb } from "@db/scope";
@@ -15,12 +15,67 @@ import { hashIp } from "@worker/auth/crypto";
 import { checkRateLimit, recordFailure } from "@worker/auth/ratelimit";
 import { clientIp, type Env } from "@worker/context";
 import { capability, checkoutDonation, PaymentUnavailable } from "@db/services/payments";
+import { siteFor, pageBySlug, siteConfig, mediaByIds } from "@db/services/sites";
+import { parseBlocks, liveDataNeeded } from "@domain/blocks";
+import { disclosureFor, analyticsScripts } from "@domain/analytics";
+import { SiteShell, RenderBlocks, type RenderContext } from "~/site/render";
 import { parseDollars, formatCents } from "@domain/fees";
 import { Button, Field, Input, Textarea, formatDate } from "~/ui";
+
+/** The four offices a club shows publicly. Never the whole role table. */
+const OFFICE_LABELS: Record<string, string> = {
+  club_president: "President",
+  club_secretary: "Secretary",
+  club_treasurer: "Treasurer",
+  membership_chair: "Membership Chair",
+};
 
 export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData) return marketingMeta({ title: "Club", description: "", path: "/", noIndex: true });
   const { club } = loaderData;
+
+  if (loaderData.mode === "site") {
+    const { page, seo, canonical } = loaderData;
+    return [
+      ...marketingMeta({
+        title: page.title === club.name ? club.name : `${page.title}${seo.titleSuffix ? ` · ${seo.titleSuffix}` : ` · ${club.name}`}`,
+        description: page.description || seo.description || `${club.name} — meetings, service projects and how to visit.`,
+        path: canonical,
+        noIndex: page.noindex,
+      }),
+      ...(loaderData.faq.length
+        ? [
+            {
+              // A club's own answers, marked up so search engines and AI
+              // assistants can quote them. This is the single highest-leverage
+              // structured data a club page can carry.
+              "script:ld+json": {
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                mainEntity: loaderData.faq.map((f) => ({
+                  "@type": "Question",
+                  name: f.q,
+                  acceptedAnswer: { "@type": "Answer", text: f.a },
+                })),
+              },
+            },
+          ]
+        : []),
+      {
+        "script:ld+json": {
+          "@context": "https://schema.org",
+          "@type": "CivicStructure",
+          name: club.name,
+          url: canonical,
+          address: club.city
+            ? { "@type": "PostalAddress", addressLocality: club.city, addressRegion: club.state ?? undefined }
+            : undefined,
+          foundingDate: club.charterDate ?? undefined,
+        },
+      },
+    ];
+  }
+
   return [
     ...marketingMeta({
       title: club.name,
@@ -54,13 +109,34 @@ export function meta({ loaderData }: Route.MetaArgs) {
  * club first and scoping everything after it to that club's tenant keeps the
  * boundary intact: this loader can read one club's public data and nothing else.
  */
-export async function loader({ params, context }: Route.LoaderArgs) {
+export async function loader({ params, request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const club = await resolvePublicClubBySlug(env.DB, params.clubSlug);
   if (!club) throw data("No club at that address.", { status: 404 });
 
   const db = tenantDb(env.DB, club.tenant_id);
   const today = new Date().toISOString().slice(0, 10);
+
+  // A club that has built a site gets its site. A club that hasn't gets the
+  // single page it has always had — the two coexist rather than one replacing
+  // the other, so nobody's public page went dark the day this shipped.
+  const site = await siteFor(db, club.id);
+  const siteReq = context.get(siteRequestContext);
+
+  // A preview link makes drafts visible, but only for the site the token
+  // actually resolved to. The siteId check means a valid token for one club
+  // cannot be used to read another club's unpublished pages.
+  const preview = Boolean(siteReq?.preview && site && siteReq.siteId === site.id);
+
+  if (site && (site.status === "live" || preview)) {
+    const page = await pageBySlug(db, site.id, params.pageSlug ?? "");
+    if (page && (page.status === "published" || preview)) {
+      return loadSitePage(env, db, club, site, page, siteReq, preview, today);
+    }
+  }
+  // A sub-path only exists inside a site. Without one, it is a 404 rather than
+  // a silent redirect to the home page: a stale link should say so.
+  if (params.pageSlug) throw data("No page at that address.", { status: 404 });
 
   const [meetings, projects, officers, payments] = await Promise.all([
     listMeetings(db, club.id, { from: today, limit: 6 }),
@@ -89,14 +165,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     capability(env, db, club.id),
   ]);
 
-  const OFFICE_LABELS: Record<string, string> = {
-    club_president: "President",
-    club_secretary: "Secretary",
-    club_treasurer: "Treasurer",
-    membership_chair: "Membership Chair",
-  };
-
   return {
+    mode: "legacy" as const,
     club: {
       name: club.name,
       slug: club.slug,
@@ -129,6 +199,142 @@ export async function loader({ params, context }: Route.LoaderArgs) {
       name: `${o.preferred_name || o.first_name} ${o.last_name}`,
       office: OFFICE_LABELS[o.role_key] ?? "Officer",
     })),
+  };
+}
+
+/**
+ * Load one page of a club's built site.
+ *
+ * Reads exactly the live data the page's blocks ask for — `liveDataNeeded`
+ * walks the blocks first, so a page with no meetings block costs no meetings
+ * query. The alternative is fetching everything on every page, which on a
+ * four-page site is four times the database work for one page's worth of
+ * content.
+ */
+async function loadSitePage(
+  env: Env,
+  db: ReturnType<typeof tenantDb>,
+  club: NonNullable<Awaited<ReturnType<typeof resolvePublicClubBySlug>>>,
+  site: Awaited<ReturnType<typeof siteFor>> & object,
+  page: NonNullable<Awaited<ReturnType<typeof pageBySlug>>>,
+  siteReq: SiteRequest | null,
+  preview: boolean,
+  today: string,
+) {
+  const blocks = parseBlocks(page.blocks_json);
+  const needs = liveDataNeeded(blocks);
+
+  // Set by the Worker when the request arrived on the club's own domain. On
+  // that host every link is root-relative; on ours everything hangs off
+  // /club/<slug>.
+  const ownDomain = siteReq?.siteId === site.id ? siteReq.hostname : null;
+  const base = ownDomain ? "" : `/club/${club.slug}`;
+
+  const mediaIds = blocks.flatMap((b) => [
+    typeof b.mediaId === "string" ? b.mediaId : "",
+    ...(Array.isArray(b.items)
+      ? (b.items as Record<string, unknown>[]).map((i) => (typeof i.mediaId === "string" ? i.mediaId : ""))
+      : []),
+  ]);
+
+  const [config, meetings, projects, officers, payments, media] = await Promise.all([
+    siteConfig(db, site),
+    needs.meetings
+      ? listMeetings(db, club.id, { from: today, limit: needs.meetings * 2 })
+      : Promise.resolve([]),
+    needs.projects
+      ? db.all<{ name: string; summary: string | null; area_of_focus: string | null }>("projects", {
+          columns: "name, summary, area_of_focus",
+          where: "club_id = ? AND is_public = 1 AND status IN ('active','complete')",
+          params: [club.id],
+          orderBy: "starts_on DESC",
+          limit: needs.projects,
+        })
+      : Promise.resolve([]),
+    needs.officers
+      ? db.raw<{ first_name: string; last_name: string; preferred_name: string | null; role_key: string }>(
+          `SELECT p.first_name, p.last_name, p.preferred_name, r.role_key
+             FROM role_assignments r
+             JOIN people p ON p.id = r.person_id AND p.tenant_id = {{tenant}} AND p.deleted_at IS NULL
+            WHERE r.tenant_id = {{tenant}} AND r.scope_type = 'club' AND r.scope_id = ?
+              AND r.role_key IN ('club_president','club_secretary','club_treasurer','membership_chair')
+              AND (r.starts_on IS NULL OR r.starts_on <= ?)
+              AND (r.ends_on IS NULL OR r.ends_on >= ?)`,
+          [club.id, today, today],
+        )
+      : Promise.resolve([]),
+    needs.donate ? capability(env, db, club.id) : Promise.resolve(null),
+    mediaByIds(db, mediaIds),
+  ]);
+
+  const canonicalBase = ownDomain ? `https://${ownDomain}` : `${env.APP_URL}/club/${club.slug}`;
+
+  return {
+    mode: "site" as const,
+    // Shown as a banner. Somebody reading a preview must know they are looking
+    // at something the public can't see, or they will report a bug against a
+    // page that was never live.
+    preview,
+    club: {
+      name: club.name,
+      slug: club.slug,
+      city: club.city,
+      state: club.state_code,
+      charterDate: club.charter_date,
+      blurb: club.public_blurb,
+      meetingBlurb: club.meeting_blurb,
+      websiteUrl: club.website_url,
+    },
+    page: {
+      title: page.title,
+      description: page.description,
+      noindex: page.noindex === 1,
+    },
+    canonical: page.slug ? `${canonicalBase}/${page.slug}` : canonicalBase || "/",
+    base,
+    blocks,
+    theme: config.theme,
+    tokens: config.tokens,
+    nav: config.nav,
+    seo: config.seo,
+    analytics: config.analytics,
+    // Pulled out for the FAQPage markup, which has to live in meta().
+    faq: blocks
+      .filter((b) => b.type === "faq")
+      .flatMap((b) => (Array.isArray(b.items) ? (b.items as { q: string; a: string }[]) : []))
+      .filter((f) => f.q && f.a)
+      .slice(0, 20),
+    meetings: meetings
+      .filter((m) => m.is_public === 1 && m.cancelled === 0)
+      .slice(0, needs.meetings)
+      .map((m) => ({
+        date: m.meeting_date,
+        time: m.start_time,
+        location: m.location,
+        topic: m.speaker_topic,
+        speaker: m.speaker_name,
+      })),
+    projects: projects.map((p) => ({ name: p.name, summary: p.summary, area: p.area_of_focus })),
+    officers: officers.map((o) => ({
+      name: `${o.preferred_name || o.first_name} ${o.last_name}`,
+      office: OFFICE_LABELS[o.role_key] ?? "Officer",
+    })),
+    donations:
+      payments?.donationsEnabled && payments.clubReady
+        ? {
+            amounts: payments.suggestedAmounts,
+            coverFeeDefault: payments.coverFeeDefault,
+            blurb: payments.donationBlurb,
+          }
+        : null,
+    media: [...media.values()].map((m) => ({
+      id: m.id,
+      url: `${base}/media/${m.id}`,
+      alt: m.alt_text ?? "",
+      width: m.width,
+      height: m.height,
+    })),
+    disclosure: disclosureFor(config.analytics),
   };
 }
 
@@ -297,7 +503,108 @@ async function handleDonation(
   }
 }
 
-export default function PublicClub({ loaderData, actionData }: Route.ComponentProps) {
+export default function PublicClubRoute({ loaderData, actionData }: Route.ComponentProps) {
+  if (loaderData.mode === "site") {
+    return <BuiltSite loaderData={loaderData} actionData={actionData} />;
+  }
+  return <LegacyClubPage loaderData={loaderData} actionData={actionData} />;
+}
+
+type SiteData = Extract<Route.ComponentProps["loaderData"], { mode: "site" }>;
+
+/**
+ * A club's built site.
+ *
+ * Everything visible here came out of the block registry, so this component
+ * has almost nothing to decide. What it does own is the two things that are
+ * per-request rather than per-page: whether a form just came back with an
+ * answer, and the club's own analytics scripts.
+ */
+function BuiltSite({
+  loaderData,
+  actionData,
+}: {
+  loaderData: SiteData;
+  actionData: Route.ComponentProps["actionData"];
+}) {
+  const navigation = useNavigation();
+
+  const ctx: RenderContext = {
+    club: {
+      name: loaderData.club.name,
+      slug: loaderData.club.slug,
+      city: loaderData.club.city,
+      state: loaderData.club.state,
+    },
+    base: loaderData.base,
+    meetings: loaderData.meetings,
+    projects: loaderData.projects,
+    officers: loaderData.officers,
+    donations: loaderData.donations,
+    media: new Map(loaderData.media.map((m) => [m.id, m])),
+    formState: actionData ? { ok: actionData.ok, message: actionData.message } : null,
+    submitting: navigation.state === "submitting",
+  };
+
+  const scripts = analyticsScripts(loaderData.analytics);
+
+  return (
+    <SiteShell
+      club={{ name: loaderData.club.name, city: loaderData.club.city, state: loaderData.club.state }}
+      tokens={loaderData.tokens}
+      theme={loaderData.theme}
+      nav={loaderData.nav}
+      base={loaderData.base}
+      footerNote={
+        loaderData.disclosure ? (
+          <p className="mt-2 max-w-md text-xs">{loaderData.disclosure}</p>
+        ) : null
+      }
+    >
+      {loaderData.preview && (
+        <p className="bg-[var(--site-accent-solid)] px-6 py-2.5 text-center text-sm font-medium text-[var(--site-on-accent)]">
+          Preview — this is how the site will look. The public can't see it yet.
+        </p>
+      )}
+
+      <RenderBlocks blocks={loaderData.blocks} ctx={ctx} />
+
+      {/* The club's own trackers.
+
+          This is the one dangerouslySetInnerHTML in the product, and it is
+          unavoidable: an inline script's body cannot be expressed any other
+          way in React. What makes it safe is that the string is never the
+          club's — `analyticsScripts` composes it from a template, substituting
+          only an id that has just passed a per-provider regex for the second
+          time. There is no field anywhere in this product that accepts markup;
+          see domain/analytics.ts for why that was worth the extra work.
+
+          Rendered last so they never hold up the page. */}
+      {scripts.map((script, i) =>
+        script.src ? (
+          <script
+            key={`s${i}`}
+            async
+            src={script.src}
+            {...(script.provider === "plausible"
+              ? { "data-domain": loaderData.analytics.plausible }
+              : {})}
+          />
+        ) : script.inline ? (
+          <script key={`i${i}`} dangerouslySetInnerHTML={{ __html: script.inline }} />
+        ) : null,
+      )}
+    </SiteShell>
+  );
+}
+
+function LegacyClubPage({
+  loaderData,
+  actionData,
+}: {
+  loaderData: Extract<Route.ComponentProps["loaderData"], { mode: "legacy" }>;
+  actionData: Route.ComponentProps["actionData"];
+}) {
   const { club, meetings, projects, officers, donations } = loaderData;
   const nav = useNavigation();
 

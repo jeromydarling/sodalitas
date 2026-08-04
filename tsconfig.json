@@ -23,7 +23,8 @@
       "@content/*": ["./content/*"],
       "@emails/*": ["./emails/*"],
       "@ai/*": ["./ai/*"],
-      "@payments/*": ["./payments/*"]
+      "@payments/*": ["./payments/*"],
+      "@sites/*": ["./sites/*"]
     },
     // scripts/ runs under Node's own type stripping, which resolves import
     // specifiers literally and so needs the .ts extension written out. Safe

@@ -56,6 +56,12 @@ export const ID_PREFIXES = {
   joinSubmission: "js",
   jobRun: "jr",
   aiInvocation: "ai",
+  brandKit: "bk",
+  site: "st",
+  sitePage: "sq",
+  siteVersion: "sr",
+  siteMedia: "sm",
+  siteDomain: "sd",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

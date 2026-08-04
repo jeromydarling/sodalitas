@@ -30,7 +30,10 @@ export type AiFeature =
   | "meeting_recap"
   | "followup_draft"
   | "checkin_draft"
-  | "risk_explanation";
+  | "risk_explanation"
+  | "site_page"
+  | "site_brand"
+  | "site_polish";
 
 export interface AiEnv {
   ANTHROPIC_API_KEY?: string;

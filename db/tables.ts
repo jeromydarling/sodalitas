@@ -57,6 +57,12 @@ export const TENANT_TABLES = [
   "import_rows",
   "join_submissions",
   "ai_invocations",
+  "brand_kits",
+  "club_sites",
+  "site_pages",
+  "site_page_versions",
+  "site_media",
+  "site_domains",
 ] as const;
 
 export type TenantTable = (typeof TENANT_TABLES)[number];

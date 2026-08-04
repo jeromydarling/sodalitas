@@ -16,3 +16,23 @@ export const envContext = createContext<Env>();
 
 /** The Worker's ExecutionContext, for `waitUntil` on fire-and-forget work. */
 export const execContext = createContext<ExecutionContext>();
+
+/**
+ * How this request reached a club's site, when it did.
+ *
+ * Set by the Worker after it has resolved a custom hostname or verified a
+ * preview token, and only then. Deliberately a router context rather than a
+ * request header: a header can be sent by anybody, and `X-Sodalitas-Preview: 1`
+ * on a plain request would otherwise be a way to read every club's unpublished
+ * pages. Nothing outside worker/index.ts can set this.
+ */
+export interface SiteRequest {
+  /** The club's own hostname, when the request arrived on one. */
+  hostname: string | null;
+  /** True when a valid preview token was presented. Drafts become visible. */
+  preview: boolean;
+  /** The site the token or hostname resolved to, so a loader can check. */
+  siteId: string;
+}
+
+export const siteRequestContext = createContext<SiteRequest | null>(null);

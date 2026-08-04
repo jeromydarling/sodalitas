@@ -57,6 +57,13 @@ export const CAPABILITIES = [
 
   // Public presence
   "public_page.edit",
+  // The website builder. Split three ways because the three decisions differ
+  // in weight: writing a page is reversible in a click, publishing changes
+  // what the public sees, and pointing a domain at us touches DNS the club
+  // pays for and can take down their email if they get a record wrong.
+  "site.edit",
+  "site.publish",
+  "site.domain",
 
   // Data
   "import.run",
@@ -142,6 +149,7 @@ export const ROLES: Record<string, RoleDef> = {
       "email.send", "email.send_all", "email.templates",
       "notes.read_all",
       "public_page.edit",
+      "site.edit", "site.publish", "site.domain",
       "reports.export",
       "communio.read", "communio.share",
       "settings.read", "settings.write",
@@ -178,6 +186,7 @@ export const ROLES: Record<string, RoleDef> = {
       "email.send", "email.send_all", "email.templates",
       "import.run", "import.commit",
       "public_page.edit",
+      "site.edit", "site.publish", "site.domain",
       "reports.export",
       "communio.read",
       "settings.read",
@@ -233,7 +242,11 @@ export const ROLES: Record<string, RoleDef> = {
     blurb: "The club's public page and how the club tells its story.",
     scope: "club",
     annual: true,
-    caps: [...MEMBER_BASE, "public_page.edit", "email.send", "projects.write", "reports.read"],
+    caps: [...MEMBER_BASE, "public_page.edit",
+      // Not site.domain: pointing the club's domain at us is a decision for
+      // the board, not for whoever volunteered to keep the website tidy.
+      "site.edit", "site.publish",
+      "email.send", "projects.write", "reports.read"],
   },
   program_chair: {
     key: "program_chair",
@@ -267,6 +280,7 @@ export const ROLES: Record<string, RoleDef> = {
       "email.send", "email.send_all", "email.templates",
       "import.run", "import.commit",
       "public_page.edit",
+      "site.edit", "site.publish", "site.domain",
       "reports.export",
       "communio.read", "communio.share",
       "settings.read", "settings.write",

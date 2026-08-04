@@ -12,12 +12,17 @@
  * shapes that return only what the caller genuinely needs. Everything downstream
  * of them scopes to the tenant they return.
  *
- * The rule for adding a fourth: it goes in this file, so the complete list stays
- * one screen long and reviewable. If that ever stops being possible, the design
- * is wrong and needs a conversation rather than another export.
+ * The rule for adding another: it goes in this file, so the complete list stays
+ * reviewable in one sitting. If that ever stops being possible, the design is
+ * wrong and needs a conversation rather than another export.
  *
- * The two token lookups below are safe to key on a bare token because both
- * tokens are 256 bits of CSPRNG output stored only as a SHA-256 hash — the
+ * Two were added when clubs got real websites, and both are the same shape as
+ * the club-by-slug read: a visitor arrives on `rotaryclubofsomewhere.org` or on
+ * a preview link, and the tenant is what we are looking up rather than
+ * something we already know.
+ *
+ * The token lookups below are safe to key on a bare token because every one of
+ * those tokens is 256 bits of CSPRNG output stored only as a SHA-256 hash — the
  * secret is unguessable, and a stolen database yields no working links.
  */
 
@@ -137,4 +142,75 @@ export async function resolveInviteToken(
     )
     .bind(tokenHash)
     .first<InviteRef>();
+}
+
+/** Enough to render a club's own-domain site, and nothing else. */
+export interface PublicSiteRef {
+  tenant_id: string;
+  club_id: string;
+  site_id: string;
+  club_name: string;
+  club_slug: string;
+  /** 'live' or 'draft'. A draft site is served only through a preview link. */
+  site_status: string;
+  /** The hostname as we stored it, so a redirect can be exact. */
+  hostname: string;
+}
+
+/**
+ * Resolve a club site by the hostname a visitor typed.
+ *
+ * Runs on every request that does not arrive on our own hostname, so it is
+ * deliberately one indexed lookup on a UNIQUE column and no joins beyond the
+ * two it needs. A miss is the common case for a probe and must be cheap.
+ *
+ * Only `active` domains resolve. A pending one is a hostname whose certificate
+ * has not issued, and serving a club's content at a half-configured address is
+ * how a club discovers their site is live before they meant it to be.
+ */
+export async function resolveSiteByHostname(
+  db: D1Database,
+  hostname: string,
+): Promise<PublicSiteRef | null> {
+  return db
+    .prepare(
+      `SELECT d.tenant_id, d.club_id, d.site_id, d.hostname,
+              c.name AS club_name, c.slug AS club_slug,
+              s.status AS site_status
+         FROM site_domains d
+         JOIN club_sites s ON s.id = d.site_id AND s.tenant_id = d.tenant_id
+         JOIN clubs c      ON c.id = d.club_id AND c.tenant_id = d.tenant_id
+        WHERE d.hostname = ? AND d.status = 'active' AND c.status = 'active'
+        LIMIT 1`,
+    )
+    .bind(hostname.toLowerCase())
+    .first<PublicSiteRef>();
+}
+
+/**
+ * Resolve a preview token.
+ *
+ * A club sends the board a link to the draft site before it goes public. The
+ * token is per-site and regenerable — regenerating it is how a club revokes a
+ * link they shouldn't have sent, which is the only revocation anybody would
+ * think to ask for.
+ *
+ * Returns the site whatever its status, because previewing a draft is the
+ * entire purpose.
+ */
+export async function resolveSitePreviewToken(
+  db: D1Database,
+  tokenHash: string,
+): Promise<PublicSiteRef | null> {
+  return db
+    .prepare(
+      `SELECT s.tenant_id, s.club_id, s.id AS site_id, s.status AS site_status,
+              c.name AS club_name, c.slug AS club_slug, '' AS hostname
+         FROM club_sites s
+         JOIN clubs c ON c.id = s.club_id AND c.tenant_id = s.tenant_id
+        WHERE s.preview_token_hash = ? AND c.status = 'active'
+        LIMIT 1`,
+    )
+    .bind(tokenHash)
+    .first<PublicSiteRef>();
 }

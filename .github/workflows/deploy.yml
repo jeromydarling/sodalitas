@@ -1,0 +1,134 @@
+name: Deploy
+
+# Push to main ships it. Manual runs are there for a redeploy without a commit
+# — after rotating a secret, say, since Worker secrets don't take effect until
+# the next deploy.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time. Two overlapping runs can apply migrations concurrently,
+# and D1 has no lock to save you from that. `cancel-in-progress: false` because
+# a half-finished migration is worse than a queued one.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Fail here, clearly, rather than watching wrangler produce a confusing
+      # auth error four steps later. These are *repository* secrets — Worker
+      # secrets can't do this job, because you need the token before you can
+      # talk to Cloudflare at all.
+      - name: Check credentials are present
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=""
+          [ -z "$TOKEN" ] && missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -z "$ACCOUNT" ] && missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing"
+            echo ""
+            echo "Add them under Settings → Secrets and variables → Actions."
+            echo "These are GitHub Actions secrets, not Cloudflare Worker secrets:"
+            echo "wrangler needs them to authenticate before it can reach your account."
+            echo ""
+            echo "The token needs: D1 Edit, Workers Scripts Edit, Workers KV Edit, Workers R2 Edit."
+            exit 1
+          fi
+          echo "Both present."
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Migrations first, deploy second. Additive migrations are safe to have
+      # ahead of the code that uses them; the reverse leaves the new Worker
+      # querying tables that don't exist yet, which is a 500 for every visitor
+      # in the gap.
+      - name: Apply D1 migrations
+        run: npx wrangler d1 migrations apply sodalitas --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy Worker
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # A deploy that reports success while the site is broken is worse than a
+      # failed deploy. This hits a route that touches D1, so it catches the
+      # exact failure mode we've been living with: Worker up, schema missing.
+      - name: Smoke test the deployment
+        run: |
+          set -e
+          BASE="https://sodalitas.jer-f84.workers.dev"
+
+          echo "Waiting for the new version to become live…"
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/health" || true)
+            [ "$code" = "200" ] && break
+            sleep 3
+          done
+
+          fail=0
+          check() {
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE$1")
+            if [ "$code" != "$2" ]; then
+              echo "::error::$1 returned $code, expected $2"
+              fail=1
+            else
+              echo "  $1 → $code"
+            fi
+          }
+
+          check /api/health 200
+          check / 200
+          check /features 200
+          check /pricing 200
+          # Touches D1. This is the one that was 500ing.
+          check /club/lakeside 200
+          # A slug that doesn't exist must 404, not 500 — proves the query ran.
+          check /club/definitely-not-a-club 404
+
+          echo ""
+          echo "Integrations reported by the live Worker:"
+          curl -s "$BASE/api/health"
+          echo ""
+
+          exit $fail
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Deploy"
+            echo ""
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Result: ${{ job.status }}"
+            echo "- URL: https://sodalitas.jer-f84.workers.dev"
+          } >> "$GITHUB_STEP_SUMMARY"

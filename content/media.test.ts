@@ -162,17 +162,21 @@ describe("the house style", () => {
 });
 
 describe("the direction on people", () => {
-  const prompts = MEDIA.map((m) => m.prompt).join(" ");
+  /** Prompts that put people in the frame, as opposed to ruling them out. */
+  const peopled = MEDIA.filter(
+    (m) =>
+      /group|people|crowd|party/i.test(m.prompt) &&
+      !/no people|nobody in frame|nobody anywhere/i.test(m.prompt),
+  );
 
   it("says who is in the room wherever a group appears", () => {
     // The first set left it unsaid and the model chose: a sparse group of
     // elderly people in a church hall, on the front page of a product about
     // clubs not dying. Where a group is described at all, the age range is
     // now named.
-    const withGroups = MEDIA.filter((m) => /group|people|crowd|party/i.test(m.prompt));
-    expect(withGroups.length).toBeGreaterThan(2);
+    expect(peopled.length).toBeGreaterThan(2);
 
-    const vague = withGroups
+    const vague = peopled
       .filter((m) => !/mixed[- ]age|thirties|mixed group/i.test(m.prompt))
       .map((m) => m.key);
 
@@ -181,17 +185,22 @@ describe("the direction on people", () => {
     );
   });
 
-  it("shows a room as busy rather than as empty", () => {
-    // Motion blur and close crops, which is how a room reads as alive without
-    // any face being rendered. Exactly one slot is allowed to be about
-    // emptiness, and that's the retention page, where it's the argument.
-    expect(prompts).toMatch(/motion blur|long exposure|mid-movement/i);
-    const empty = MEDIA.filter((m) => /nobody in frame|nobody about|nobody present/i.test(m.prompt));
-    expect(empty.map((m) => m.key).sort()).toEqual([
-      "about-hero",
-      "contact-spot",
-      "handover-spot",
-      "retention-hero",
-    ]);
+  it("keeps people in motion rather than posed", () => {
+    // The only way a room full of people can appear without a face being
+    // rendered. If this stops being true, either the faces are back or the
+    // rooms have gone empty again — and both were the original failure.
+    for (const slot of peopled) {
+      expect(slot.prompt, slot.key).toMatch(/motion blur|softened|mid-movement|blurred/i);
+    }
+  });
+
+  it("does not let the homepage be a set of empty rooms", () => {
+    // The actual failure, stated as an invariant. One wide shot of a hall
+    // with nobody in it read as a club that had already died; four of them
+    // would be worse. At least one homepage slot has to have a room full of
+    // people in it.
+    const home = MEDIA.filter((m) => m.usedOn === "/");
+    expect(home.length).toBeGreaterThanOrEqual(3);
+    expect(home.some((m) => peopled.includes(m))).toBe(true);
   });
 });

@@ -167,25 +167,34 @@ export const MEDIA: MediaSlot[] = [
   {
     key: "home-welcome",
     // Welcome, at the scale it actually happens. A wide shot of a room says
-    // nothing; a hand on the back of a chair says the whole thing.
+    // nothing; one chair pulled out says the whole thing.
+    //
+    // Was "a hand pulling out a chair", and the hand is why it changed: hands
+    // are the thing diffusion models are worst at, and two runs produced
+    // something between a glove and a claw on the front page. The chair alone
+    // carries the same meaning and has no anatomy to get wrong.
     prompt:
-      "Very close on a hand pulling out an empty banquet chair at a table already laid for " +
-      "lunch — a jug, glasses, a folded napkin just out of focus behind. Somebody making room " +
-      "for a person who hasn't arrived yet. Warm indoor light, shot wide open, the background " +
-      "dissolved.",
-    alt: "A hand pulling out a chair at a table already laid for lunch",
+      "One empty banquet chair pulled back and turned slightly out from a table already laid " +
+      "for lunch — a water jug, glasses, a folded napkin at the place. Room made for somebody " +
+      "who hasn't arrived yet. No people anywhere in the picture. Warm indoor light, shot wide " +
+      "open, the rest of the room dissolved behind.",
+    alt: "A chair pulled out at a table laid for lunch, waiting for somebody",
     aspect: "1/1",
     treatment: "detail",
     usedOn: "/",
   },
   {
     key: "home-evening",
+    // "Seen from outside through a window" gave the model three planes to
+    // reconcile — street, glass, interior — and it resolved them as a
+    // triptych with a hard vertical seam down the middle and an invented
+    // neon sign. One plane instead: stand in the doorway.
     prompt:
-      "A lit function room seen from outside through a window on a wet winter evening, rain " +
-      "on the glass. Inside, warm lamplight and the blurred shapes of a mixed-age group " +
-      "standing and talking, several of them in their thirties. The street outside dark and " +
-      "empty. Shot from across the road.",
-    alt: "A club meeting seen from the street on a winter evening",
+      "Standing in the open doorway of a hall at the end of an evening meeting, looking in. " +
+      "A mixed-age group, thirties through sixties, still standing about in twos and threes " +
+      "talking, all of them softened by motion blur. Warm lamplight, chairs pushed back, " +
+      "coats over arms. Nobody leaving yet.",
+    alt: "A club still talking after the meeting has finished",
     aspect: "21/9",
     treatment: "band",
     usedOn: "/",
@@ -197,9 +206,10 @@ export const MEDIA: MediaSlot[] = [
     // The one image in the set that is *supposed* to be about absence, and
     // the only place emptiness is the argument rather than an accident.
     prompt:
-      "One empty chair pushed slightly back from a round banquet table where every other place " +
-      "has been used — napkins crumpled, glasses half drunk, chairs at angles. Nobody in frame. " +
-      "Late afternoon light through a window, the room otherwise cleared.",
+      "A round banquet table after lunch. Every place around it has been used — crumpled " +
+      "napkins, drained glasses, chairs pushed back at angles — except one, where the napkin " +
+      "is still folded, the glass still full and the cutlery untouched. The empty setting is " +
+      "in the foreground and clearly the subject. Nobody in frame, late afternoon light.",
     alt: "One empty place at a table where everyone else has been sitting",
     aspect: "3/2",
     treatment: "plate",
@@ -207,13 +217,20 @@ export const MEDIA: MediaSlot[] = [
   },
   {
     key: "guests-spot",
+    // Three runs of "two people from behind, crowd beyond" produced, in
+    // order: two faces in profile, an elderly crowd, and two elderly men in
+    // suits with an elderly crowd. The framing kept inviting the model to
+    // populate a room and it kept populating it the same way.
+    //
+    // So the subject changed to the object instead of the people. A tray of
+    // blank badges by the door is what a club that expects visitors looks
+    // like, and it says it without a single person in frame.
     prompt:
-      "Photographed from directly behind two people at the edge of a crowded function room — " +
-      "backs of heads and shoulders only, no face visible anywhere. One has an arm out towards " +
-      "the tables, introducing the other to the room. Beyond them a mixed-age crowd, thirties " +
-      "through seventies, dissolved by the shallow focus into soft colour and shape — not one " +
-      "person in the crowd distinguishable from another.",
-    alt: "One member introducing a visitor to the room",
+      "Close on a tray of blank white adhesive name badges and a marker pen on a small table " +
+      "just inside a doorway, one badge already peeled from the backing sheet. All the badges " +
+      "are entirely blank with no writing on them. Beyond the table, a room out of focus and " +
+      "full of warm light. Nobody in frame.",
+    alt: "Blank name badges laid out by the door for visitors",
     aspect: "4/3",
     treatment: "plate",
     usedOn: "/features/guests",

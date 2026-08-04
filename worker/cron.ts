@@ -99,18 +99,21 @@ const JOBS: Record<JobKey, Job> = {
     return { ...(await runWeeklySignals(env, now.slice(0, 10), now)) };
   },
 
-  /** Send anything queued in email_messages. Degrades to logging with no key. */
+  /** Send anything queued in email_messages. Degrades to logging with no transport. */
   async outbound_drain(env) {
     const { results } = await env.DB.prepare(
       `SELECT COUNT(*) AS n FROM email_messages WHERE status = 'queued'`,
     ).all<{ n: number }>();
     const queued = results?.[0]?.n ?? 0;
-    if (!env.RESEND_API_KEY) {
+
+    const { mailProvider } = await import("@emails/send");
+    const provider = mailProvider(env);
+    if (provider === "none") {
       // Running dark is a normal state, not a failure. The app is fully usable
       // before a single third-party key exists.
-      return { queued, sent: 0, mode: "logged_only", reason: "no mail provider configured" };
+      return { queued, sent: 0, mode: "logged_only", reason: "no mail transport configured" };
     }
-    return { queued, sent: 0, pending: "mail adapter" };
+    return { queued, sent: 0, provider, pending: "queued-send drain" };
   },
 
   /** Expire stale sessions, and put the demo back the way it was. */

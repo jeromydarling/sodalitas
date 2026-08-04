@@ -21,6 +21,15 @@ export default defineConfig({
       "@payments": new URL("./payments", import.meta.url).pathname,
     },
   },
+  server: {
+    watch: {
+      // .wrangler holds local D1, KV and R2 state, plus the files the simulated
+      // EMAIL binding writes for every message. Watching it means each email
+      // sent in development reloads the browser — which, on the login page,
+      // throws away the form you just submitted.
+      ignored: ["**/.wrangler/**"],
+    },
+  },
   build: {
     rollupOptions: {
       // The Anthropic SDK is server-only. Keeping it out of the client bundle

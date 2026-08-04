@@ -53,6 +53,25 @@
     }
   ],
 
+  // Cloudflare Email Service — outbound transactional mail, no secret required.
+  //
+  // Unrestricted on purpose: this binding mails members, guests and donors at
+  // whatever address they gave their club, so neither `destination_address` nor
+  // `allowed_destination_addresses` can be enumerated in advance. What it may
+  // send *from* is pinned instead — the sender must belong to a domain onboarded
+  // to Email Service, which is the check that actually matters.
+  //
+  // Local development simulates this: `wrangler dev` logs the message rather
+  // than sending it, so sign-in links still work on a fresh checkout with no
+  // account anywhere. Add "remote": true to send real mail from a local run —
+  // real mail to real people, so use a test address.
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_sender_addresses": ["hello@sodalitas.app"]
+    }
+  ],
+
   // The Images and Workers AI bindings are deliberately NOT declared here.
   //
   // Both proxy to Cloudflare even in local development, so declaring them makes

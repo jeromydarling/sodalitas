@@ -31,9 +31,14 @@
 # STRIPE_CONNECT_CLIENT_ID=
 # STRIPE_WEBHOOK_SECRET=
 
-# Outbound mail. Without it, every message is written to email_messages with
-# status 'logged_only' and printed to the console — including sign-in links,
-# so you can log in locally with no mail provider at all.
+# Outbound mail needs NO secret. It goes through the Cloudflare Email Service
+# `EMAIL` binding declared in wrangler.jsonc, which `wrangler dev` simulates
+# locally — messages are written under .wrangler/tmp/email/ and the body is
+# printed to the console, so sign-in links work on a fresh checkout.
+#
+# Resend is only a fallback, used when there is no EMAIL binding at all (for a
+# deployment whose domain isn't on Cloudflare DNS). You almost certainly do not
+# need this.
 # RESEND_API_KEY=
 
 # Salt for hashing IPs in rate-limit keys and audit rows. Any long random

@@ -51,8 +51,10 @@ api.onError((err, c) => {
 api.notFound((c) => c.json({ error: "not_found", message: "No such endpoint." }, 404));
 
 /** Liveness. Reports which integrations are configured, never their values. */
-api.get("/health", (c) => {
+api.get("/health", async (c) => {
   const env = c.env;
+  const { mailProvider } = await import("@emails/send");
+  const provider = mailProvider(env);
   return c.json({
     ok: true,
     env: env.APP_ENV,
@@ -61,7 +63,11 @@ api.get("/health", (c) => {
     integrations: {
       ai: Boolean(env.ANTHROPIC_API_KEY),
       payments: Boolean(env.STRIPE_SECRET_KEY),
-      email: Boolean(env.RESEND_API_KEY),
+      email: provider !== "none",
+      // Named, because "email: true" doesn't tell you whether mail is going out
+      // through Cloudflare or Resend — and that is the first thing you want to
+      // know when a message hasn't arrived.
+      mailProvider: provider,
     },
   });
 });

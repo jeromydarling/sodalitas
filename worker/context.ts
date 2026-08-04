@@ -18,6 +18,7 @@ import {
   type Assignment,
 } from "@domain/roles";
 import { readSession, sessionTokenFrom, type SessionData } from "./auth/session";
+import type { SendEmailBinding } from "@emails/send";
 
 export interface Env {
   DB: D1Database;
@@ -26,6 +27,12 @@ export interface Env {
   IMAGES?: unknown;
   AI?: unknown;
   ASSETS?: Fetcher;
+  /**
+   * Cloudflare Email Service. Declared in wrangler.jsonc, so it is present in
+   * production and simulated by `wrangler dev` locally. Optional in the type
+   * because email must keep degrading to the console if it is ever removed.
+   */
+  EMAIL?: SendEmailBinding;
   APP_URL: string;
   APP_ENV: string;
   MAIL_FROM: string;

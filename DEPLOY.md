@@ -91,11 +91,15 @@ one: AI buttons explain they aren't switched on, mail is written to
 sign-in links, so you can log in with no mail provider at all — and payment
 settings stay hidden. Add them when you want the feature, not before.
 
+Outbound mail is **not** in this list: it goes through the Cloudflare Email
+Service binding, which needs no secret. `RESEND_API_KEY` is only a fallback for
+deployments that can't use it. See [Mail](#mail).
+
 ```sh
 npx wrangler secret put ADMIN_TOKEN        # guards /api/ops/*  ← set this first
 npx wrangler secret put IP_HASH_SECRET     # salts hashed IPs
 npx wrangler secret put ANTHROPIC_API_KEY  # draft recaps and follow-ups
-npx wrangler secret put RESEND_API_KEY     # outbound mail
+npx wrangler secret put RESEND_API_KEY     # mail fallback only — see "Mail" below
 npx wrangler secret put STRIPE_SECRET_KEY  # dues and donations
 npx wrangler secret put STRIPE_CONNECT_CLIENT_ID
 npx wrangler secret put STRIPE_WEBHOOK_SECRET
@@ -160,10 +164,54 @@ Signals are deduped by key and snapshots are keyed on (club, date), so any job
 is safe to re-run by hand after a failure — it repairs the gap rather than
 doubling the data.
 
-## Mail domain
+## Mail
 
-Until a sending domain is verified, everything degrades to logs and the product
-still works. When you're ready, verify the domain with the provider, set
-`RESEND_API_KEY`, and point `MAIL_FROM` / `MAIL_REPLY_TO` in `wrangler.jsonc`
-at an address on it. `MAIL_REPLY_TO` should be somewhere a human reads — a
-member replying to a meeting reminder is doing exactly the right thing.
+Outbound mail goes through **Cloudflare Email Service** via the `EMAIL` binding
+declared in `wrangler.jsonc`. There is no secret to set — the binding either
+exists or it doesn't — and Cloudflare handles DKIM and ARC signing.
+
+Three transports, chosen by what's available (`mailProvider` in
+`emails/send.ts` is the one place that decides):
+
+1. **Cloudflare Email Service** — the `EMAIL` binding. Preferred.
+2. **Resend** — used only if there's no binding and `RESEND_API_KEY` is set.
+   Kept because Email Sending requires the domain to be on Cloudflare DNS, and
+   not every deployment will be.
+3. **Nothing** — writes to `email_messages` with status `logged_only` and
+   prints the body. A fresh checkout can sign in with no mail account anywhere.
+
+### Onboarding the sending domain
+
+Email Sending needs the domain onboarded before it will deliver to arbitrary
+recipients. Until then Cloudflare only accepts sends to addresses **verified on
+the account**, and anything else fails with `E_SENDER_NOT_VERIFIED` or
+`E_RECIPIENT_NOT_ALLOWED` — both of which are translated into plain English in
+`email_messages.error` rather than stored as a bare code.
+
+1. The domain must use Cloudflare DNS, and the account must be on Workers Paid.
+2. Dashboard → **Compute → Email Service → Email Sending → Onboard Domain**.
+   Cloudflare adds MX, SPF, DKIM and DMARC records on a `cf-bounce` subdomain.
+3. Point `MAIL_FROM` and `MAIL_REPLY_TO` in `wrangler.jsonc` at an address on
+   that domain, and update `allowed_sender_addresses` on the `send_email`
+   binding to match — it pins what this Worker may send *from*.
+
+`MAIL_REPLY_TO` should be somewhere a human reads. A member replying to a
+meeting reminder is doing exactly the right thing.
+
+> `MAIL_FROM` is currently `hello@sodalitas.app`. Sending will fail until that
+> domain is onboarded — a `workers.dev` subdomain cannot be a sender.
+
+### Local development
+
+`wrangler dev` simulates the binding: nothing is delivered, each message is
+written under `.wrangler/tmp/email/`, and the body is also printed to the
+console so sign-in links stay copy-pasteable. Add `"remote": true` to the
+`send_email` binding to send real mail from a local run — real mail to real
+people, so use a test address.
+
+### Bounces and complaints
+
+Not wired up yet. Cloudflare can publish `message.bounced` and
+`message.complained` events to a Queue, which is the natural way to feed
+`email_suppressions` automatically. Today a hard bounce is only suppressed
+account-wide by Cloudflare, and this app won't know about it.

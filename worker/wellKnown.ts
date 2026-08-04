@@ -13,11 +13,20 @@
  */
 
 import { brand } from "@content/brand";
+import { GUIDES } from "@content/guides";
 import { PLANS, formatCents } from "@domain/pricing";
 import type { Env } from "./context";
 
-/** Public pages, with the metadata the sitemap and llms.txt both need. */
-export const PUBLIC_PAGES = [
+export interface PublicPage {
+  path: string;
+  title: string;
+  summary: string;
+  priority: string;
+  changefreq: string;
+}
+
+/** The fixed pages. Guides are appended from their own registry below. */
+const CORE_PAGES = [
   {
     path: "/",
     title: "Sodalitas — club software for Rotary and Rotaract",
@@ -48,7 +57,33 @@ export const PUBLIC_PAGES = [
     priority: "0.8",
     changefreq: "monthly",
   },
-] as const;
+  {
+    path: "/guides",
+    title: "Guides for club officers",
+    summary:
+      "Practical guides on keeping members, onboarding new ones, the July handover, moving between systems, and what club software really costs.",
+    priority: "0.8",
+    changefreq: "monthly",
+  },
+] as const satisfies readonly PublicPage[];
+
+/**
+ * Every public page, guides included.
+ *
+ * Derived rather than listed, so a guide added to the registry appears in the
+ * sitemap and in llms.txt without anybody remembering to do it. A hand-kept
+ * sitemap is always eventually wrong, and the failure is silent.
+ */
+export const PUBLIC_PAGES: readonly PublicPage[] = [
+  ...CORE_PAGES,
+  ...GUIDES.map((g) => ({
+    path: `/guides/${g.slug}`,
+    title: g.title,
+    summary: g.summary,
+    priority: "0.7",
+    changefreq: "yearly",
+  })),
+];
 
 function site(env: Env): string {
   return (env.APP_URL || `https://${brand.domain}`).replace(/\/+$/, "");
@@ -165,7 +200,15 @@ all in groups too small to anonymise, and buckets timestamps to the week.
 
 ## Pages
 
-${PUBLIC_PAGES.map((p) => `- [${p.title}](${base}${p.path}): ${p.summary}`).join("\n")}
+${CORE_PAGES.map((p) => `- [${p.title}](${base}${p.path}): ${p.summary}`).join("\n")}
+
+## Guides
+
+Written for club officers and useful to a club that never becomes a customer.
+Several of them describe when not to move software, and which alternatives do a
+given job better.
+
+${GUIDES.map((g) => `- [${g.title}](${base}/guides/${g.slug}): ${g.summary}`).join("\n")}
 
 ## Not affiliated
 

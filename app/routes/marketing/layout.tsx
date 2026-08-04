@@ -3,6 +3,7 @@ import { brand } from "@content/brand";
 
 const NAV = [
   { to: "/retention", label: "Keeping members" },
+  { to: "/guides", label: "Guides" },
   { to: "/compare", label: "Compare" },
   { to: "/pricing", label: "Pricing" },
 ];

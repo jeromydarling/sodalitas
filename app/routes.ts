@@ -12,6 +12,8 @@ export default [
     route("pricing", "routes/marketing/pricing.tsx"),
     route("retention", "routes/marketing/retention.tsx"),
     route("compare", "routes/marketing/compare.tsx"),
+    route("guides", "routes/marketing/guides.tsx"),
+    route("guides/:guideSlug", "routes/marketing/guide-detail.tsx"),
   ]),
 
   // ── Public club pages (the ClubRunner counter) ────────────────────────────

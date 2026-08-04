@@ -368,7 +368,14 @@ export type UploadPlan =
  * is a broken download link in a list of working ones, which is the worst of
  * both outcomes. So: plan, put, record. If the put fails, nothing was written.
  */
-export function planUpload(db: TenantDb, input: UploadInput, folder: FolderRow | null): UploadPlan {
+export function planUpload(
+  db: TenantDb,
+  input: UploadInput,
+  // Only the visibility matters here, so that is all it asks for — a caller
+  // that has just read the folder id off a form shouldn't have to fetch the
+  // whole row to find out whether the upload is allowed.
+  folder: { visibility: Visibility } | null,
+): UploadPlan {
   const title = input.title.trim().slice(0, 200);
   if (!title) return { ok: false, message: "Give the document a name people will recognise." };
 

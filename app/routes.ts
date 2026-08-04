@@ -69,6 +69,12 @@ export default [
       route("import", "routes/app/import.tsx"),
       route("committees", "routes/app/committees.tsx"),
       route("projects", "routes/app/projects.tsx"),
+      route("events", "routes/app/events.tsx"),
+      route("events/:eventId", "routes/app/event-detail.tsx"),
+      route("documents", "routes/app/documents.tsx"),
+      // Not a page — it streams the file. Under /app so it goes through the
+      // same session and capability check as everything else.
+      route("documents/:documentId", "routes/app/document-download.tsx"),
       route("dues", "routes/app/dues.tsx"),
       route("communio", "routes/app/communio.tsx"),
       // The website builder. `site/brand` and `site/domains` come before

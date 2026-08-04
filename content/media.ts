@@ -145,10 +145,16 @@ export const MEDIA: MediaSlot[] = [
   },
   {
     key: "about-hero",
+    // Was a street of shopfronts, and shopfronts mean signs — which FLUX
+    // letters in convincing gibberish however firmly you ask it not to. Two
+    // runs, two streets of nonsense words. Fighting a diffusion model over
+    // text is a losing game, so the subject changed instead: a town square
+    // with no shopfront in it has nothing to letter.
     prompt:
-      "An ordinary weekday street of small independent shopfronts in a mid-sized town, " +
-      "early morning, quiet, one shop light on.",
-    alt: "A small town main street of the kind Rotary clubs are rooted in",
+      "A small town square on an overcast weekday morning. A war memorial, a few benches, " +
+      "bare plane trees, wet paving, a red brick civic building behind. No shopfronts, no " +
+      "signage, no vehicles, nobody about.",
+    alt: "The kind of small town square a Rotary club is rooted in",
     aspect: "16/9",
     usedOn: "/about",
   },

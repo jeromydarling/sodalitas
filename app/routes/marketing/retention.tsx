@@ -1,4 +1,6 @@
 import { Link } from "react-router";
+import { Icon, Eyebrow } from "~/brand";
+import { Media, hasMedia } from "~/media";
 import type { Route } from "./+types/retention";
 import { CLUB_WEIGHTS, MEMBER_WEIGHTS, NEW_MEMBER_GRACE_DAYS } from "@domain/scoring";
 import { WEEKLY_SIGNAL_CAP } from "@domain/signals";
@@ -70,16 +72,27 @@ export default function Retention() {
         }}
       />
 
-      <article className="mx-auto max-w-3xl px-6 pt-16 pb-16">
-        <h1 className="text-3xl font-semibold tracking-tight text-ink-900 sm:text-4xl dark:text-ink-50">
-          How the retention part works
-        </h1>
-        <p className="mt-4 text-lg text-pretty text-ink-600 dark:text-ink-300">
-          No black box. Here is exactly what goes into the numbers, what they weigh,
-          and what the club is asked to do about them.
-        </p>
+      <header className="aurora border-b border-ink-200 dark:border-ink-800">
+        <div className="mx-auto max-w-3xl px-6 pt-20 pb-16">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-500">
+            <Icon.Drift width="1.6em" height="1.6em" />
+          </span>
+          <Eyebrow>Keeping members</Eyebrow>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-balance text-ink-900 sm:text-5xl dark:text-ink-50">
+            How the retention part works
+          </h1>
+          <p className="mt-5 text-lg text-pretty text-ink-600 dark:text-ink-300">
+            No black box. Here is exactly what goes into the numbers, what they weigh, and what
+            the club is asked to do about them.
+          </p>
+          {hasMedia("retention-hero") && (
+            <Media slot="retention-hero" className="mt-10" priority />
+          )}
+        </div>
+      </header>
 
-        <h2 className="mt-12 text-xl font-semibold text-ink-900 dark:text-ink-100">
+      <article className="mx-auto max-w-3xl px-6 pt-14 pb-16">
+        <h2 className="text-xl font-semibold text-ink-900 dark:text-ink-100">
           What we measure about a member
         </h2>
         <p className="mt-2 text-pretty text-ink-600 dark:text-ink-400">

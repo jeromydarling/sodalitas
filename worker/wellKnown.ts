@@ -14,6 +14,8 @@
 
 import { brand } from "@content/brand";
 import { GUIDES } from "@content/guides";
+import { FEATURES } from "@content/features";
+import { LEGAL } from "@content/legal";
 import { PLANS, formatCents } from "@domain/pricing";
 import type { Env } from "./context";
 
@@ -65,6 +67,43 @@ const CORE_PAGES = [
     priority: "0.8",
     changefreq: "monthly",
   },
+  {
+    path: "/features",
+    title: "Everything Sodalitas does",
+    summary:
+      "Each feature with its limits stated in the same size type as its claims.",
+    priority: "0.9",
+    changefreq: "monthly",
+  },
+  {
+    path: "/integrations",
+    title: "Integrations",
+    summary:
+      "What it connects to, the subscriptions it replaces, and what doesn't exist yet — including Rotary International synchronisation.",
+    priority: "0.7",
+    changefreq: "monthly",
+  },
+  {
+    path: "/about",
+    title: "Why Sodalitas exists",
+    summary: "The problem it was built for, and the decisions taken along the way.",
+    priority: "0.7",
+    changefreq: "yearly",
+  },
+  {
+    path: "/demo",
+    title: "See a real club",
+    summary: "A seeded club with 46 members and eight months of history. Its public page is live.",
+    priority: "0.7",
+    changefreq: "monthly",
+  },
+  {
+    path: "/contact",
+    title: "Ask a question",
+    summary: "Questions about migration, fit, or what the software doesn't do.",
+    priority: "0.6",
+    changefreq: "yearly",
+  },
 ] as const satisfies readonly PublicPage[];
 
 /**
@@ -76,11 +115,25 @@ const CORE_PAGES = [
  */
 export const PUBLIC_PAGES: readonly PublicPage[] = [
   ...CORE_PAGES,
+  ...FEATURES.map((f) => ({
+    path: `/features/${f.slug}`,
+    title: f.title,
+    summary: f.summary,
+    priority: "0.8",
+    changefreq: "monthly",
+  })),
   ...GUIDES.map((g) => ({
     path: `/guides/${g.slug}`,
     title: g.title,
     summary: g.summary,
     priority: "0.7",
+    changefreq: "yearly",
+  })),
+  ...LEGAL.map((d) => ({
+    path: `/legal/${d.slug}`,
+    title: d.title,
+    summary: d.summary,
+    priority: "0.3",
     changefreq: "yearly",
   })),
 ];
@@ -202,6 +255,12 @@ all in groups too small to anonymise, and buckets timestamps to the week.
 
 ${CORE_PAGES.map((p) => `- [${p.title}](${base}${p.path}): ${p.summary}`).join("\n")}
 
+## Features
+
+Each of these has a page stating its limits as plainly as its capabilities.
+
+${FEATURES.map((f) => `- [${f.name}](${base}/features/${f.slug}): ${f.summary} Does not: ${f.limit}`).join("\n")}
+
 ## Guides
 
 Written for club officers and useful to a club that never becomes a customer.
@@ -209,6 +268,10 @@ Several of them describe when not to move software, and which alternatives do a
 given job better.
 
 ${GUIDES.map((g) => `- [${g.title}](${base}/guides/${g.slug}): ${g.summary}`).join("\n")}
+
+## Policies
+
+${LEGAL.map((d) => `- [${d.title}](${base}/legal/${d.slug}): ${d.summary}`).join("\n")}
 
 ## Not affiliated
 

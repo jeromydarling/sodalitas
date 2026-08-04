@@ -80,3 +80,84 @@
     }
   }
 }
+
+/**
+ * Scroll-driven reveal.
+ *
+ * Built the way round that fails safe: the finished state is the default, and
+ * the animation only ever runs where `animation-timeline` is supported. A
+ * browser without it — or a reader with reduced motion, or anyone whose CSS
+ * never loads — sees the content, because the content was never hidden by
+ * default. The common implementation does the opposite, starting at opacity 0
+ * and relying on JavaScript to undo it, which turns a script failure into a
+ * blank page.
+ */
+@layer utilities {
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        animation: reveal-in linear both;
+        animation-timeline: view();
+        /* Finish well before the element is centred, or it reads as sluggish. */
+        animation-range: entry 0% cover 22%;
+      }
+      .reveal-1 { animation-range: entry 0% cover 27%; }
+      .reveal-2 { animation-range: entry 0% cover 32%; }
+      .reveal-3 { animation-range: entry 0% cover 37%; }
+    }
+  }
+
+  @keyframes reveal-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* Depth without shadows doing the work. A hairline plus a barely-there wash
+     reads as a surface in both themes; a drop shadow reads as a 2014 card. */
+  .surface {
+    background-color: color-mix(in oklch, var(--color-ink-50) 35%, white);
+    border: 1px solid var(--color-ink-200);
+  }
+  @media (prefers-color-scheme: dark) {
+    .surface {
+      background-color: color-mix(in oklch, var(--color-ink-900) 70%, var(--color-ink-950));
+      border-color: var(--color-ink-800);
+    }
+  }
+
+  /* The one gradient in the product, behind hero sections only. */
+  .aurora {
+    background-image:
+      radial-gradient(60rem 30rem at 15% -10%, color-mix(in oklch, var(--color-brand-500) 14%, transparent), transparent 70%),
+      radial-gradient(45rem 25rem at 95% 0%, color-mix(in oklch, var(--color-gold-500) 10%, transparent), transparent 65%);
+  }
+
+  /* Hairline rule that fades at both ends, for section breaks. */
+  .rule-fade {
+    height: 1px;
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      var(--color-ink-200) 20%,
+      var(--color-ink-200) 80%,
+      transparent
+    );
+  }
+  @media (prefers-color-scheme: dark) {
+    .rule-fade {
+      background-image: linear-gradient(
+        to right,
+        transparent,
+        var(--color-ink-800) 20%,
+        var(--color-ink-800) 80%,
+        transparent
+      );
+    }
+  }
+}

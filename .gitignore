@@ -42,3 +42,10 @@ secrets/
 
 # typescript build info
 *.tsbuildinfo
+
+# Generated marketing imagery. Not committed: it's several MB of binary that
+# `npm run images` reproduces from content/media.ts whenever it's wanted, and
+# every slot renders nothing until its file exists. Commit them deliberately if
+# you'd rather CI not need a Cloudflare token.
+app/media/*
+!app/media/.gitkeep

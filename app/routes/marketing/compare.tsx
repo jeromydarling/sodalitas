@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { Icon, Reveal, Eyebrow } from "~/brand";
 import type { Route } from "./+types/compare";
 import { brand } from "@content/brand";
 import {
@@ -44,15 +45,18 @@ export default function Compare() {
         }}
       />
 
-      <section className="mx-auto max-w-4xl px-6 pt-16 pb-10">
-        <h1 className="text-3xl font-semibold tracking-tight text-ink-900 sm:text-4xl dark:text-ink-50">
-          How we compare
-        </h1>
-        <p className="mt-4 text-lg text-pretty text-ink-600 dark:text-ink-300">
-          ClubRunner and DACdb have served Rotary for a long time and both do things
-          we don't. This page says which things, because a comparison where the other
-          side never wins isn't a comparison.
-        </p>
+      <section className="aurora border-b border-ink-200 dark:border-ink-800">
+        <div className="mx-auto max-w-4xl px-6 pt-20 pb-16">
+          <Eyebrow>Compare</Eyebrow>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-balance text-ink-900 sm:text-5xl dark:text-ink-50">
+            Where ClubRunner and DACdb beat us
+          </h1>
+          <p className="mt-5 text-lg text-pretty text-ink-600 dark:text-ink-300">
+            Both have served Rotary for a long time and both do things we don't. This page
+            says which things first, because a comparison where the other side never wins
+            isn't a comparison.
+          </p>
+        </div>
       </section>
 
       {/* ── Where they win ── */}

@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "db:migrate:local": "node scripts/migrate.mjs --local",
     "db:migrate:remote": "node scripts/migrate.mjs --remote",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "images": "node --experimental-strip-types --no-warnings scripts/generate-images.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",

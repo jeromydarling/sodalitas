@@ -1,0 +1,5 @@
+Generated images land here. Nothing in this folder is committed except this file.
+
+Run `npm run images` with a CLOUDFLARE_API_TOKEN to fill it — see
+scripts/generate-images.ts. Slots with no file render nothing at all, so the
+site is complete without them.

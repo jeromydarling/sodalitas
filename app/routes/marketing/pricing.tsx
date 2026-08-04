@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { Icon, Reveal, Eyebrow } from "~/brand";
 import type { Route } from "./+types/pricing";
 import { brand } from "@content/brand";
 import {
@@ -40,29 +41,37 @@ export default function Pricing() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(faqSchema(FAQS)) }} />
 
-      <section className="mx-auto max-w-6xl px-6 pt-16 pb-10">
-        <h1 className="text-3xl font-semibold tracking-tight text-ink-900 sm:text-4xl dark:text-ink-50">
-          Pricing
-        </h1>
-        <p className="mt-4 max-w-2xl text-lg text-pretty text-ink-600 dark:text-ink-300">
-          Every limit is on this page. Nothing is discovered at renewal, and there is
-          no per-member charge that quietly grows as your club does.
-        </p>
-        <p className="mt-3 text-sm text-ink-500">
-          Pay annually and you're charged for {ANNUAL_MONTHS_CHARGED} months instead of 12.
-        </p>
+      <section className="aurora border-b border-ink-200 dark:border-ink-800">
+        <div className="mx-auto max-w-6xl px-6 pt-20 pb-16">
+          <Eyebrow>Pricing</Eyebrow>
+          <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight text-balance text-ink-900 sm:text-5xl dark:text-ink-50">
+            Every limit is on this page
+          </h1>
+          <p className="mt-5 max-w-2xl text-lg text-pretty text-ink-600 dark:text-ink-300">
+            Nothing is discovered at renewal, and there is no per-member charge that quietly
+            grows as your club does.
+          </p>
+          <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white/70 px-3.5 py-1.5 text-sm text-ink-600 dark:border-ink-800 dark:bg-ink-900/70 dark:text-ink-400">
+            <Icon.Spark className="text-gold-500" width="1em" height="1em" />
+            Pay annually and you're charged for {ANNUAL_MONTHS_CHARGED} months instead of 12
+          </p>
+        </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 pb-16">
+      <section className="mx-auto max-w-6xl px-6 py-16">
         <div className="grid gap-6 lg:grid-cols-3">
           {PLAN_ORDER.map((key) => {
             const plan = PLANS[key];
             const featured = key === "club_standard";
             return (
-              <div
+              <Reveal
                 key={key}
+                delay={(PLAN_ORDER.indexOf(key) % 3) as 0 | 1 | 2}
+                className="h-full"
+              >
+              <div
                 className={[
-                  "flex flex-col rounded-2xl border p-6",
+                  "flex h-full flex-col rounded-2xl border p-6",
                   featured
                     ? "border-brand-500 bg-white shadow-sm dark:bg-ink-900"
                     : "border-ink-200 bg-white/60 dark:border-ink-800 dark:bg-ink-900/40",
@@ -110,7 +119,7 @@ export default function Pricing() {
                 </div>
 
                 <Link
-                  to="/login"
+                  to="/signup"
                   prefetch="intent"
                   className={[
                     "mt-6 rounded-lg px-4 py-2.5 text-center font-medium",
@@ -121,7 +130,8 @@ export default function Pricing() {
                 >
                   Start with {plan.name}
                 </Link>
-              </div>
+                </div>
+              </Reveal>
             );
           })}
         </div>

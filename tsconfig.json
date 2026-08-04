@@ -25,6 +25,10 @@
       "@ai/*": ["./ai/*"],
       "@payments/*": ["./payments/*"]
     },
+    // scripts/ runs under Node's own type stripping, which resolves import
+    // specifiers literally and so needs the .ts extension written out. Safe
+    // alongside noEmit, and the bundler handles both forms in app code.
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,

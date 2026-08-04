@@ -12,8 +12,15 @@ export default [
     route("pricing", "routes/marketing/pricing.tsx"),
     route("retention", "routes/marketing/retention.tsx"),
     route("compare", "routes/marketing/compare.tsx"),
+    route("features", "routes/marketing/features.tsx"),
+    route("features/:featureSlug", "routes/marketing/feature-detail.tsx"),
+    route("integrations", "routes/marketing/integrations.tsx"),
     route("guides", "routes/marketing/guides.tsx"),
     route("guides/:guideSlug", "routes/marketing/guide-detail.tsx"),
+    route("about", "routes/marketing/about.tsx"),
+    route("demo", "routes/marketing/demo.tsx"),
+    route("contact", "routes/marketing/contact.tsx"),
+    route("legal/:legalSlug", "routes/marketing/legal.tsx"),
   ]),
 
   // ── Public club pages (the ClubRunner counter) ────────────────────────────

@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Form, Link } from "react-router";
 import type { Route } from "./+types/demo";
 import { DEMO_CLUB_NAME } from "@db/services/demo";
 import { Icon, Reveal, Eyebrow } from "~/brand";
@@ -16,11 +16,13 @@ export function meta(_: Route.MetaArgs) {
 /**
  * The demo page.
  *
- * Careful here: there is no signed-in demo tour. The seeded club's *public*
- * page is real and live, and signing up is free — so those are the two things
- * this page offers. A "Try the app" button leading to a login wall would be the
- * single most annoying thing on the site, and a fake screenshot tour would be
- * worse.
+ * Two ways in, neither of which asks for an email address: the club's public
+ * page, and a real signed-in session as its president. The second is the one
+ * that matters — a demo behind a sign-up form is not a demo, it is a lead
+ * capture with a screenshot attached.
+ *
+ * What makes that safe is that everything reaching outside the club refuses in
+ * there. See `requireNotDemo` in worker/context.ts.
  */
 const WHAT_IS_THERE = [
   ["46 members", "With attendance patterns that look like a real club's, not evenly random."],
@@ -38,8 +40,8 @@ export default function Demo() {
           {DEMO_CLUB_NAME}
         </h1>
         <p className="mt-5 text-lg text-pretty text-ink-600 dark:text-ink-400">
-          A seeded club that exists so there's something real to look at. It resets every Sunday,
-          so nothing you do to it matters.
+          A seeded club that exists so there's something real to look at — and to sign in to.
+          It resets every night, so nothing you do to it matters.
         </p>
       </header>
 
@@ -74,34 +76,37 @@ export default function Demo() {
       </Reveal>
 
       <Reveal>
-        <div className="mt-8 rounded-2xl border border-ink-200 p-8 dark:border-ink-800">
+        <div className="mt-8 rounded-2xl border border-brand-300 bg-brand-500/[0.06] p-8 dark:border-brand-500/40">
           <h2 className="text-xl font-semibold text-ink-900 dark:text-ink-100">
-            The inside needs an account, and that's free
+            Or go straight inside, no sign-up
           </h2>
-          {/* Said plainly rather than dressed up as a feature. */}
           <p className="mt-2 max-w-2xl text-pretty text-ink-600 dark:text-ink-400">
-            There's no guest tour of the signed-in app yet — the roster, the signals list and the
-            dues screens are all behind a login, because everything in them is somebody's real
-            club data. Signing up takes about a minute, costs nothing, and gives you your own
-            empty club to put your members into.
+            Signs you in as the club president. The roster, the weekly signals with real names on
+            them, attendance, committees, dues — all of it, editable. Nothing you do matters,
+            because it resets every night.
           </p>
-          <div className="mt-5 flex flex-wrap gap-3">
+          {/* A POST, not a link: a GET here would hand a session to every link
+              prefetcher and mail scanner that touched the URL. */}
+          <Form method="post" action="/demo/enter" className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-3 font-medium text-white transition-colors hover:bg-brand-700"
+            >
+              Open the demo club
+              <Icon.Arrow />
+            </button>
             <Link
               to="/signup"
               prefetch="intent"
-              className="inline-flex items-center gap-2 rounded-lg border border-ink-300 px-4 py-2.5 font-medium text-ink-800 transition-colors hover:border-brand-400 hover:text-brand-600 dark:border-ink-700 dark:text-ink-200"
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-3 font-medium text-ink-600 transition-colors hover:text-brand-600 dark:text-ink-400"
             >
-              Start a club
-              <Icon.Arrow />
+              Start a real club instead
             </Link>
-            <Link
-              to="/retention"
-              prefetch="intent"
-              className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 font-medium text-ink-600 transition-colors hover:text-brand-600 dark:text-ink-400"
-            >
-              Or read exactly how the scoring works
-            </Link>
-          </div>
+          </Form>
+          <p className="mt-4 text-sm text-ink-500">
+            Anything that would reach a real person — inviting an officer by email, taking a card
+            payment, posting to Communio — is switched off in there, and says so when you try.
+          </p>
         </div>
       </Reveal>
     </div>

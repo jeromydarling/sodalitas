@@ -35,6 +35,9 @@ export default [
   //    here, and it has to work for somebody who wants nothing to do with us.
   route("unsubscribe/:token", "routes/unsubscribe.tsx"),
 
+  // POST-only: a GET here would hand a session to every link prefetcher.
+  route("demo/enter", "routes/demo-enter.tsx"),
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   route("signup", "routes/auth/signup.tsx"),
   route("invite/:token", "routes/auth/invite.tsx"),

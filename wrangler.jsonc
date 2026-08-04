@@ -90,8 +90,12 @@
   //   05:00 daily  — club health snapshots (nightly, idempotent)
   //   06:15 Monday — weekly signal generation (after snapshots settle)
   //   */15         — outbound queue drain + webhook retries
-  //   04:00 Sunday — demo tenant reset + housekeeping
+  //   04:00 daily   — demo tenant reset + housekeeping
+  //
+  // The demo resets nightly rather than weekly: anyone on the internet can sign
+  // in to it, so by Wednesday a weekly reset is showing every visitor whatever
+  // Monday's visitor typed into it.
   "triggers": {
-    "crons": ["0 5 * * *", "15 6 * * 1", "*/15 * * * *", "0 4 * * 0"]
+    "crons": ["0 5 * * *", "15 6 * * 1", "*/15 * * * *", "0 4 * * *"]
   }
 }

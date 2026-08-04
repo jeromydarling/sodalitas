@@ -74,7 +74,8 @@ export default function Features() {
           </h2>
           <p className="mx-auto mt-2 max-w-xl text-pretty text-ink-600 dark:text-ink-400">
             Forty-six members, real attendance patterns, and a signals list with people on it.
-            No sign-up, and you can break anything you like — it resets every Sunday.
+            No sign-up, no email address — you sign in as the club president and can break anything
+            you like. It resets every night.
           </p>
           <Link
             to="/demo"

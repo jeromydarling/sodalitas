@@ -66,6 +66,14 @@ export interface RequestContext {
   session: SessionData | null;
   user: CurrentUser | null;
   tenantId: string | null;
+  /**
+   * True when this request is inside the public demo tenant.
+   *
+   * Anybody on the internet can sign in there, so it gates everything that
+   * reaches the outside world — see `requireNotDemo`. Read from the tenant row
+   * rather than from the session, so a stale cookie can't claim otherwise.
+   */
+  isDemo: boolean;
   authority: Authority;
   /** Tenant-scoped data access. Throws if there is no tenant. */
   db: () => TenantDb;
@@ -118,9 +126,11 @@ async function build(request: Request, env: Env): Promise<RequestContext> {
   let authority = EMPTY_AUTHORITY;
   const tenantId = session?.tenantId ?? null;
 
+  let isDemo = false;
+
   if (session) {
     // The user row and their role assignments are independent reads.
-    const [userRow, assignments] = await Promise.all([
+    const [userRow, assignments, tenantRow] = await Promise.all([
       env.DB.prepare(`SELECT id, email, display_name FROM users WHERE id = ?`)
         .bind(session.userId)
         .first<{ id: string; email: string; display_name: string | null }>(),
@@ -134,12 +144,18 @@ async function build(request: Request, env: Env): Promise<RequestContext> {
             .all<Assignment>()
             .then((r) => r.results ?? [])
         : Promise.resolve([] as Assignment[]),
+      tenantId
+        ? env.DB.prepare(`SELECT is_demo FROM tenants WHERE id = ?`)
+            .bind(tenantId)
+            .first<{ is_demo: number }>()
+        : Promise.resolve(null),
     ]);
 
     if (userRow) {
       user = { id: userRow.id, email: userRow.email, displayName: userRow.display_name };
       authority = resolveAuthority(assignments, today);
     }
+    isDemo = tenantRow?.is_demo === 1;
     // A session whose user row is gone resolves to an anonymous context rather
     // than an error — the account was deleted while the cookie lived on.
   }
@@ -152,6 +168,7 @@ async function build(request: Request, env: Env): Promise<RequestContext> {
     session,
     user,
     tenantId,
+    isDemo,
     authority,
     db: () => {
       if (!tenantId) throw new NoTenant();
@@ -184,6 +201,35 @@ async function build(request: Request, env: Env): Promise<RequestContext> {
       }
     },
   };
+}
+
+/**
+ * Refuse an action that would reach outside the demo.
+ *
+ * Anybody on the internet can sign in to the demo club, which makes every
+ * outward-facing action a gift to whoever finds it: the officer invitation
+ * would mail an arbitrary address, so would a dues payment link, and Communio
+ * sharing would push text into groups that real clubs read. Unguarded, this is
+ * an open spam relay attached to a real sending domain.
+ *
+ * So those actions refuse here rather than being trusted to a UI that hides the
+ * button. The message is written to be read by a curious visitor rather than by
+ * us — they did nothing wrong, and the answer is genuinely interesting.
+ */
+export function requireNotDemo(ctx: RequestContext, what: string): void {
+  if (!ctx.isDemo) return;
+  throw new Response(
+    `${what} is switched off in the demo club, because anyone can sign in here and ` +
+      `it would reach real people. Everything that stays inside the club works — ` +
+      `add members, record a meeting, bill the dues, break whatever you like. It all ` +
+      `resets overnight.`,
+    { status: 403, statusText: "Not in the demo", headers: { "Content-Type": "text/plain" } },
+  );
+}
+
+/** The same rule, without throwing — for hiding a control that would only fail. */
+export function canLeaveDemo(ctx: RequestContext): boolean {
+  return !ctx.isDemo;
 }
 
 /** Context for a signed-in user, or throw. */

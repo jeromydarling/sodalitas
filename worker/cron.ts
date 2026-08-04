@@ -25,7 +25,7 @@ const SCHEDULE: Record<string, JobKey> = {
   "0 5 * * *": "nightly_snapshots",
   "15 6 * * 1": "weekly_signals",
   "*/15 * * * *": "outbound_drain",
-  "0 4 * * 0": "housekeeping",
+  "0 4 * * *": "housekeeping",
 };
 
 export async function runScheduled(cron: string, env: Env): Promise<void> {
@@ -139,7 +139,7 @@ const JOBS: Record<JobKey, Job> = {
       .run();
 
     // The demo is the best sales argument this product has, and anyone can
-    // click around in it — including deleting things. Weekly reset, plus a
+    // click around in it — including deleting things. Nightly reset, plus a
     // self-heal if it's ever found empty, so it is never broken and never bare.
     let demo: Record<string, unknown> = { reseeded: false };
     try {

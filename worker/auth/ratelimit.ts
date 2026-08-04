@@ -49,6 +49,12 @@ export const RULES = {
    * would wear the disputes.
    */
   donate: { windowSec: 3600, max: 10 },
+  /**
+   * Entering the demo club, per IP. Generous — a curious visitor may open it
+   * two or three times — but bounded, because every entry writes a session to
+   * KV and an unthrottled session factory is a cheap way to fill it.
+   */
+  demoEnter: { windowSec: 3600, max: 20 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RuleName = keyof typeof RULES;

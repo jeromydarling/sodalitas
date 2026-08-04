@@ -35,6 +35,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   }
 
   return {
+    isDemo: ctx.isDemo,
     user: { name: ctx.user.displayName ?? ctx.user.email, email: ctx.user.email },
     // Titles are what a Rotarian recognises, and they're also the clearest
     // answer to "why can't I see that?" — you can see what you hold.
@@ -50,6 +51,19 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 export default function AppLayout({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex min-h-svh flex-col bg-ink-50 dark:bg-ink-950">
+      {/* Said at the top of every screen, because somebody who forgot they are
+          in the demo and starts entering their real roster has been badly
+          served by a subtle badge in a corner. */}
+      {loaderData.isDemo && (
+        <div className="bg-gold-500/15 px-6 py-2 text-center text-sm text-ink-800 dark:text-ink-200">
+          <strong className="font-semibold">Demo club.</strong> Everything here is invented, and
+          it all resets overnight. Break whatever you like —{" "}
+          <Link to="/signup" className="font-medium text-brand-600 hover:underline">
+            start a real club
+          </Link>{" "}
+          when you're ready.
+        </div>
+      )}
       <header className="border-b border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-3">
           <div className="flex min-w-0 items-center gap-6">

@@ -2,7 +2,7 @@ import { Form, Link, redirect, useSearchParams } from "react-router";
 import type { Route } from "./+types/dues";
 import { envContext } from "@worker/loadContext";
 import { appMeta } from "~/seo";
-import { getContext } from "@worker/context";
+import { getContext, requireNotDemo } from "@worker/context";
 import {
   listInvoices, listPeriods, summarise, billPeriod, recordPayment, waiveInvoice,
   suggestPeriodLabel, INVOICE_STATUS_LABELS, PAYMENT_METHOD_LABELS,
@@ -129,6 +129,7 @@ export async function action({ request, context }: Route.ActionArgs) {
    */
   if (intent === "card" || intent === "email-link") {
     ctx.require("payments.write", club.id);
+    requireNotDemo(ctx, "Taking a card payment");
     const invoiceId = String(form.get("invoiceId") ?? "");
     const clubRow = await db.byId<{ name: string }>("clubs", club.id, { columns: "name" });
 

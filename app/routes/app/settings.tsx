@@ -2,7 +2,7 @@ import { Form, Link } from "react-router";
 import type { Route } from "./+types/settings";
 import { envContext } from "@worker/loadContext";
 import { appMeta } from "~/seo";
-import { getContext } from "@worker/context";
+import { getContext, requireNotDemo } from "@worker/context";
 import { ROLES, rolesForScope } from "@domain/roles";
 import { listPeople, displayName } from "@db/services/people";
 import { newId } from "@domain/ids";
@@ -110,6 +110,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   // than guarding the whole action.
   if (intent === "payments") {
     ctx.require("payments.settings", club.id);
+    requireNotDemo(ctx, "Connecting a payment account");
     const amounts = String(form.get("suggestedAmounts") ?? "")
       .split(",")
       .map((s) => parseDollars(s))
@@ -132,6 +133,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   if (intent === "payments-refresh") {
     ctx.require("payments.settings", club.id);
+    requireNotDemo(ctx, "Connecting a payment account");
     try {
       const result = await refreshAccount(ctx.env, db, club.id, ctx.now);
       if (!result) return { error: "No Stripe account is linked to this club." };
@@ -144,6 +146,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   if (intent === "payments-unlink") {
     ctx.require("payments.settings", club.id);
+    requireNotDemo(ctx, "Connecting a payment account");
     const settings = await getSettings(db, club.id);
     // Forget it on our side first. If Stripe's deauthorize call fails we must
     // still stop using an account the club has told us to stop using.
@@ -169,6 +172,9 @@ export async function action({ request, context }: Route.ActionArgs) {
   const roleKey = String(form.get("roleKey") ?? "");
   if (!looksLikeEmail(email)) return { error: "We need an email address to send the invitation to." };
   if (!ROLES[roleKey]) return { error: "Pick an office." };
+
+  // The one action here that mails a stranger.
+  requireNotDemo(ctx, "Inviting an officer by email");
 
   const emailNorm = normalizeEmail(email);
   const personId = String(form.get("personId") ?? "") || null;

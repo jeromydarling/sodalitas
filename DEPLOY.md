@@ -80,8 +80,41 @@ curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" \
 That produces a 46-member club with eight months of history, then scores it and
 generates the week's signals. Its public page lands at `/club/lakeside`.
 
-The weekly housekeeping cron re-seeds it, and self-heals if it is ever found
+The nightly housekeeping cron re-seeds it, and self-heals if it is ever found
 empty.
+
+### Signing in to it
+
+`/demo` has a button that mints a session as `demo@sodalitas.app`, a seeded
+account holding **Club President** plus the two import capabilities. No sign-up,
+no email address, no password — the account has no password hash at all, so it
+cannot be used from the ordinary sign-in form.
+
+The entry point is a POST. A GET would hand a session to every link prefetcher
+and mail scanner that touched the URL, and React Router's own `prefetch="intent"`
+would do it on hover.
+
+### What is switched off in there, and why
+
+Anyone on the internet can sign in, which makes every outward-facing action a
+gift to whoever finds it. Three are refused by `requireNotDemo` in
+`worker/context.ts`:
+
+- **Inviting an officer by email** — would send mail to any address a stranger
+  typed. Unguarded, this is an open relay attached to a real sending domain.
+- **Card payments** — would create real Stripe checkouts.
+- **Posting to Communio** — groups deliberately span tenants, so anything posted
+  from the demo lands in front of real clubs.
+
+Behind that sits a second layer: `sendEmail` refuses outright for any tenant
+flagged `is_demo`, and **fails closed** — if it cannot determine whether a
+tenant is the demo, it does not send. The guard covers the actions we know
+about; the backstop covers whatever gets added later by somebody who didn't
+know the rule.
+
+Everything that stays inside the club works normally: adding members, recording
+attendance, billing dues, running an import, breaking things. It is all rebuilt
+at 04:00 UTC.
 
 ## Secrets
 

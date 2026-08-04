@@ -2,7 +2,7 @@ import { Form, useSearchParams } from "react-router";
 import type { Route } from "./+types/communio";
 import { envContext } from "@worker/loadContext";
 import { appMeta } from "~/seo";
-import { getContext } from "@worker/context";
+import { getContext, requireNotDemo } from "@worker/context";
 import {
   listGroups, createGroup, joinGroup, leaveGroup, shareSignal, listSharedSignals,
   listSpeakers, addSpeaker, listRequests, postRequest, postReply, listReplies,
@@ -75,6 +75,16 @@ export async function action({ request, context }: Route.ActionArgs) {
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
   const groupId = String(form.get("groupId") ?? "");
+
+  /**
+   * Reading Communio in the demo is the point; writing to it is not.
+   *
+   * Groups deliberately span tenants — that's the whole feature — so anything
+   * posted from the demo would land in front of real clubs, written by whoever
+   * happened to click the demo button. The sanitiser strips identifying detail
+   * but it cannot strip intent.
+   */
+  requireNotDemo(ctx, "Posting to Communio");
 
   if (intent === "create") {
     ctx.require("communio.share");

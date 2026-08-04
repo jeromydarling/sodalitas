@@ -24,6 +24,39 @@ export const DEMO_SLUG = "demo";
 export const DEMO_CLUB_NAME = "Rotary Club of Lakeside";
 
 /**
+ * The account anyone on the internet can sign in as.
+ *
+ * A real address on a domain we control, never a member's, so that if anything
+ * ever does escape the demo guards it lands somewhere we'll see it rather than
+ * in a stranger's inbox. It holds no password: the only way in is the demo
+ * button, which mints a session directly.
+ */
+export const DEMO_USER_EMAIL = "demo@sodalitas.app";
+export const DEMO_USER_NAME = "Demo (Club President)";
+
+/**
+ * The office the demo account holds.
+ *
+ * President rather than administrator: it sees the whole club, which is the
+ * point of a demo, without holding the capabilities that only make sense for
+ * somebody administering a real installation.
+ */
+export const DEMO_ROLE_KEY = "club_president";
+
+/**
+ * Capabilities granted on top of the office.
+ *
+ * The migration toolkit is one of the strongest reasons a club moves, and a
+ * president doesn't normally hold it — that's the secretary's job. Rather than
+ * distort the role table to suit the demo, the demo account is granted the two
+ * capabilities directly, which is what `extra_caps` is for.
+ *
+ * Safe because an import in the demo writes only to the demo, and the demo is
+ * rebuilt every night regardless.
+ */
+export const DEMO_EXTRA_CAPS = "import.run,import.commit";
+
+/**
  * Mulberry32. Small, fast, and good enough for placing plausible names and
  * attendance — this is scenery, not cryptography.
  */
@@ -153,7 +186,85 @@ export async function reseedDemo(
 
   const db = tenantDb(env.DB, tenantId);
   const stats = await seedClub(db, clubId, today, now);
+  await seedDemoLogin(env.DB, tenantId, clubId, now);
   return { tenantId, clubId, stats };
+}
+
+/**
+ * The account the demo button signs people in as.
+ *
+ * Recreated on every reseed rather than seeded once, because the club gets a
+ * fresh id each time and both `tenant_users` and `role_assignments` are
+ * tenant-owned — the wipe takes them with it. The `users` row is global and
+ * survives, so it is upserted rather than inserted.
+ *
+ * No password hash is ever written. There is nothing to guess, and the account
+ * cannot be used from the ordinary sign-in form even by somebody who knows the
+ * address.
+ */
+export async function seedDemoLogin(
+  db: D1Database,
+  tenantId: string,
+  clubId: string,
+  now: string,
+): Promise<string> {
+  const emailNorm = DEMO_USER_EMAIL.toLowerCase();
+
+  const existing = await db
+    .prepare(`SELECT id FROM users WHERE email_norm = ?`)
+    .bind(emailNorm)
+    .first<{ id: string }>();
+
+  const userId = existing?.id ?? newId("user");
+  if (!existing) {
+    await db
+      .prepare(
+        `INSERT INTO users (id, email, email_norm, display_name, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(userId, DEMO_USER_EMAIL, emailNorm, DEMO_USER_NAME, now, now)
+      .run();
+  }
+
+  await db
+    .prepare(
+      `INSERT INTO tenant_users (tenant_id, user_id, status, created_at)
+       VALUES (?, ?, 'active', ?)
+       ON CONFLICT (tenant_id, user_id) DO NOTHING`,
+    )
+    .bind(tenantId, userId, now)
+    .run();
+
+  // Open-ended: a demo whose access quietly expired at the end of the Rotary
+  // year would be a puzzling outage in July.
+  await db
+    .prepare(
+      `INSERT INTO role_assignments
+         (id, tenant_id, user_id, person_id, role_key, scope_type, scope_id,
+          extra_caps, starts_on, ends_on, created_at, updated_at)
+       VALUES (?, ?, ?, NULL, ?, 'club', ?, ?, NULL, NULL, ?, ?)`,
+    )
+    .bind(newId("role"), tenantId, userId, DEMO_ROLE_KEY, clubId, DEMO_EXTRA_CAPS, now, now)
+    .run();
+
+  return userId;
+}
+
+/** Where the demo button sends people. Null when the demo hasn't been seeded. */
+export async function resolveDemoLogin(
+  db: D1Database,
+): Promise<{ userId: string; tenantId: string } | null> {
+  return db
+    .prepare(
+      `SELECT u.id AS userId, t.id AS tenantId
+         FROM tenants t
+         JOIN tenant_users tu ON tu.tenant_id = t.id AND tu.status = 'active'
+         JOIN users u ON u.id = tu.user_id
+        WHERE t.slug = ? AND t.is_demo = 1 AND u.email_norm = ?
+        LIMIT 1`,
+    )
+    .bind(DEMO_SLUG, DEMO_USER_EMAIL.toLowerCase())
+    .first<{ userId: string; tenantId: string }>();
 }
 
 /** Remove every tenant-owned row. Ordered child-first for the FK constraints. */

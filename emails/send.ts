@@ -86,6 +86,39 @@ export interface SendResult {
  * One function, so the health endpoint, the settings page and the send path
  * can never disagree about what is configured.
  */
+/**
+ * Is this tenant the public demo?
+ *
+ * Cached per isolate. The answer for a given tenant id never changes — the
+ * demo keeps its row across reseeds and no real tenant ever becomes one — so
+ * this is a handful of queries over a Worker's lifetime rather than one per
+ * send.
+ */
+const demoTenants = new Map<string, boolean>();
+
+async function isDemoTenant(db: TenantDb): Promise<boolean> {
+  const cached = demoTenants.get(db.tenantId);
+  if (cached !== undefined) return cached;
+
+  let answer = false;
+  try {
+    const row = await db.unsafeDb
+      .prepare(`SELECT is_demo FROM tenants WHERE id = ?`)
+      .bind(db.tenantId)
+      .first<{ is_demo: number }>();
+    answer = row?.is_demo === 1;
+  } catch (err) {
+    // Fail closed. If we can't tell whether this is the demo, don't send —
+    // a lost message is recoverable; mail sent from the demo to a stranger
+    // is not.
+    console.error("[email] could not determine demo status; refusing to send", err);
+    return true;
+  }
+
+  demoTenants.set(db.tenantId, answer);
+  return answer;
+}
+
 export function mailProvider(env: Pick<EmailEnv, "EMAIL" | "RESEND_API_KEY">): MailProvider {
   if (env.EMAIL) return "cloudflare";
   if (env.RESEND_API_KEY) return "resend";
@@ -131,6 +164,24 @@ export async function sendEmail(
         return { status: "suppressed", provider: "none", id };
       }
     }
+  }
+
+  /**
+   * The demo club never sends. Ever.
+   *
+   * The backstop behind `requireNotDemo`: that guards the actions we know
+   * about, and this catches whatever gets added later by somebody who didn't
+   * know the rule. Anyone on the internet can sign in to the demo, so a send
+   * path reachable from it is an open relay on a real sending domain — the kind
+   * of mistake that costs a sending reputation permanently.
+   *
+   * Recorded as `logged_only` rather than refused, so the demo still shows a
+   * complete member timeline with the message on it.
+   */
+  if (await isDemoTenant(db)) {
+    console.log(`[email] demo tenant — not sending to ${email.to} (${email.subject})`);
+    await record(db, id, env, email, "logged_only", "none", null, now);
+    return { status: "logged_only", provider: "none", id };
   }
 
   const provider = mailProvider(env);

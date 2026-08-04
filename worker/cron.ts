@@ -99,8 +99,12 @@ const JOBS: Record<JobKey, Job> = {
     return { ...(await runWeeklySignals(env, now.slice(0, 10), now)) };
   },
 
-  /** Send anything queued in email_messages. Degrades to logging with no transport. */
+  /**
+   * The quarter-hourly tick: queued mail, plus the website work that happens
+   * while nobody is watching.
+   */
   async outbound_drain(env) {
+    const now = new Date().toISOString();
     const { results } = await env.DB.prepare(
       `SELECT COUNT(*) AS n FROM email_messages WHERE status = 'queued'`,
     ).all<{ n: number }>();
@@ -108,12 +112,24 @@ const JOBS: Record<JobKey, Job> = {
 
     const { mailProvider } = await import("@emails/send");
     const provider = mailProvider(env);
-    if (provider === "none") {
-      // Running dark is a normal state, not a failure. The app is fully usable
-      // before a single third-party key exists.
-      return { queued, sent: 0, mode: "logged_only", reason: "no mail transport configured" };
-    }
-    return { queued, sent: 0, provider, pending: "queued-send drain" };
+    // Running dark is a normal state, not a failure. The app is fully usable
+    // before a single third-party key exists.
+    const mail =
+      provider === "none"
+        ? { queued, sent: 0, mode: "logged_only", reason: "no mail transport configured" }
+        : { queued, sent: 0, provider, pending: "queued-send drain" };
+
+    // Website upkeep rides the same quarter-hour tick. Both jobs are "somebody
+    // set this up and went away" — a page told to publish itself this evening,
+    // and a custom domain waiting on DNS. Neither warrants its own cron slot,
+    // and neither is allowed to fail the mail drain.
+    const { publishScheduled, refreshDomains } = await import("./jobs/sites");
+    const [scheduled, domains] = await Promise.all([
+      publishScheduled(env, now).catch((err) => ({ error: String(err) })),
+      refreshDomains(env, now).catch((err) => ({ error: String(err) })),
+    ]);
+
+    return { mail, scheduled, domains };
   },
 
   /** Expire stale sessions, and put the demo back the way it was. */
@@ -159,10 +175,17 @@ const JOBS: Record<JobKey, Job> = {
       demo = { reseeded: false, error: err instanceof Error ? err.message : String(err) };
     }
 
+    // A domain a club removed stays claimed for a week, so an accidental
+    // removal on Tuesday can be undone on Wednesday. Then it goes, which is
+    // what frees the hostname for anybody — including the same club.
+    const { reapRemovedDomains } = await import("./jobs/sites");
+    const domains = await reapRemovedDomains(env, now).catch((err) => ({ error: String(err) }));
+
     return {
       sessions_expired: expired.meta.changes ?? 0,
       unsubscribe_tokens_pruned: staleTokens.meta.changes ?? 0,
       demo,
+      ...domains,
     };
   },
 };

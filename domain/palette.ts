@@ -380,20 +380,35 @@ export function parseTokens(json: string | null | undefined): BrandTokens {
 const SPACING: Record<Density, string> = { airy: "1.35", regular: "1", compact: "0.8" };
 
 /**
- * The step to fill a button with.
+ * The step to fill a button or a band with.
  *
- * Not always 600. Around the middle of the ramp there is a band where neither
- * white nor near-black reaches 4.5:1 — a mid green sits right in it, which is
- * how the Grove preset shipped a button at 4.3 until a test caught it. Rather
- * than nudge the ramp shape and disturb every other colour, walk down the ramp
- * until a step passes. A club picking green gets a slightly deeper button than
- * a club picking blue, which nobody will ever notice, and both are legible.
+ * Not always the one asked for. Around the middle of the ramp there is a band
+ * where neither white nor near-black reaches 4.5:1 — a mid green sits right in
+ * it, which is how the Grove preset shipped a button at 4.3 until a test caught
+ * it. Rather than nudge the ramp shape and disturb every other colour, step off
+ * the requested position until something passes.
+ *
+ * The search goes **outward in both directions**, nearest first, and that
+ * detail matters more than it looks. Walking only downward turned Rotary Gold
+ * into brown: gold's own lightness is well above the ramp's mid, so its 500 is
+ * already a darker amber, and stepping down again landed on something nobody
+ * would call gold. Going up instead finds a bright gold that carries dark text
+ * perfectly well. The rule is "stay as close to the intended lightness as
+ * legibility allows", which is what a designer would do by hand.
  */
 export function solidStep(ramp: Ramp, from: RampStep = 600): RampStep {
   const start = RAMP_STEPS.indexOf(from);
-  for (let i = start; i < RAMP_STEPS.length; i++) {
-    const step = RAMP_STEPS[i]!;
-    if (bestContrast(ramp[step]) >= AA_NORMAL) return step;
+  const passes = (index: number) =>
+    index >= 0 &&
+    index < RAMP_STEPS.length &&
+    bestContrast(ramp[RAMP_STEPS[index]!]) >= AA_NORMAL;
+
+  if (passes(start)) return from;
+  for (let offset = 1; offset < RAMP_STEPS.length; offset++) {
+    // Lighter before darker at the same distance: a light fill with dark text
+    // keeps more of the colour's character than a dark fill with white text.
+    if (passes(start - offset)) return RAMP_STEPS[start - offset]!;
+    if (passes(start + offset)) return RAMP_STEPS[start + offset]!;
   }
   return 900;
 }

@@ -136,9 +136,11 @@ npx wrangler secret put RESEND_API_KEY     # mail fallback only — see "Mail" b
 npx wrangler secret put STRIPE_SECRET_KEY  # dues and donations
 npx wrangler secret put STRIPE_CONNECT_CLIENT_ID
 npx wrangler secret put STRIPE_WEBHOOK_SECRET
+npx wrangler secret put CF_API_TOKEN        # clubs' own domains — see "Custom domains"
+npx wrangler secret put CF_ZONE_ID
 ```
 
-Three of those deserve a note:
+Most are self-explanatory. These deserve a note:
 
 **`ADMIN_TOKEN`** guards `/api/ops/*`. While it is unset those endpoints are
 reachable only from localhost, so a deployed Worker without it exposes nothing
@@ -162,6 +164,10 @@ it to `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
 `checkout.session.expired` and `charge.refunded` — **including events from
 connected accounts**, since every charge happens on a club's own account.
 
+**`CF_API_TOKEN` and `CF_ZONE_ID`** are what let clubs point their own domain at
+their site. They need more setup than a `secret put`, so they have their own
+section below.
+
 ## Payments, and whose money it is
 
 Sodalitas never holds a club's money. Each club connects its own Stripe account
@@ -173,6 +179,42 @@ club's own Stripe dashboard, under the club's own tax identity.
 That is worth saying out loud to a treasurer, and it also keeps us clear of
 holding charitable funds, which is not a place a small SaaS belongs.
 
+## Custom domains
+
+Clubs can serve their public site at their own address —
+`rotaryclubofsomewhere.org` rather than ours. It runs on Cloudflare for SaaS,
+and it needs two things set once.
+
+**`CF_ZONE_ID`** is the zone clubs CNAME into. It has to be a zone on this
+Cloudflare account with Cloudflare for SaaS enabled, and its fallback origin
+has to point at this Worker — the setup is in the dashboard under
+SSL/TLS → Custom Hostnames, and the
+[Workers as your fallback origin](https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/start/advanced-settings/worker-as-origin/)
+guide is the one to follow: an originless `AAAA 100::` record plus a `*/*`
+Worker route.
+
+**`CF_API_TOKEN`** needs one permission — **SSL and Certificates: Edit** on
+that zone. Nothing else. It is used only to create, read and delete custom
+hostnames.
+
+Optionally set `SITE_CNAME_TARGET` as a plain var in `wrangler.jsonc` — it is
+what a club types into their registrar. It defaults to the Worker's own
+hostname, which works but reads oddly on a DNS control panel; something like
+`sites.sodalitas.app` is what you want a treasurer to be copying.
+
+**Until all of that exists, the feature runs dark and nothing breaks.** A club
+can add their address, see the exact record to create, and save it. The row sits
+at `pending`, the quarter-hourly cron registers it the moment the credentials
+land, and the club is not told anything untrue in the meantime.
+
+One boundary worth knowing about: a request arriving on a hostname that is not
+ours is resolved to a club and then rewritten under `/club/<slug>`. Everything
+is rewritten, which means `/login` and `/app/people` on a club's domain resolve
+to pages that do not exist. A club's domain cannot serve the application, and
+that is a property of the routing rather than a list of blocked paths — a new
+app route cannot accidentally become reachable there.
+
+
 ## Cron
 
 Four schedules are declared in `wrangler.jsonc` and register on deploy. All UTC:
@@ -181,7 +223,7 @@ Four schedules are declared in `wrangler.jsonc` and register on deploy. All UTC:
 |---|---|---|
 | `0 5 * * *` | `nightly_snapshots` | Scores every club and member; moves memberships in and out of `at_risk` |
 | `15 6 * * 1` | `weekly_signals` | Turns last night's scores into the week's list, and into tasks |
-| `*/15 * * * *` | `outbound_drain` | Sends queued mail |
+| `*/15 * * * *` | `outbound_drain` | Sends queued mail; publishes pages scheduled for now; re-checks custom domains waiting on DNS |
 | `0 4 * * 0` | `housekeeping` | Expires sessions, resets the demo |
 
 Every run writes to `job_runs` whether it succeeds or fails, so a job silently

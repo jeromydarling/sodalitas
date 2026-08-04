@@ -186,7 +186,12 @@ export const INCUMBENTS: Incumbent[] = [
     rangeMonthlyCents: [4_000, 12_000],
     note: "Billed annually and tiered by member count. Website hosting is bundled.",
     betterAt: [
-      "A far more complete website builder — if your club's public site is the main thing you need, ClubRunner does more than we do today.",
+      // Kept honest as our own website builder landed. The blanket concession
+      // that used to sit here stopped being true; what remains is the part
+      // that still is, and it is a real difference rather than a token one.
+      "Free-form website layout and file hosting. Ours is built from fixed section types, which is why a club can't make a page that looks wrong — but a club with someone who wants pixel control will find ours restrictive.",
+      "Event registration and ticketing, with paid signups and a guest list. We don't do this yet at all.",
+      "A document library — bylaws, minutes, budgets, filed and searchable in one place.",
       "Longer track record with Rotary International data integration.",
       "Used by roughly 4,000 clubs, so most Rotarians have seen it before.",
     ],

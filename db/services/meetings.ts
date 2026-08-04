@@ -82,7 +82,22 @@ export function getMeeting(db: TenantDb, id: string): Promise<MeetingRow | null>
 export function listMeetings(
   db: TenantDb,
   clubId: string,
-  opts: { from?: string; to?: string; limit?: number } = {},
+  opts: {
+    from?: string;
+    to?: string;
+    limit?: number;
+    /**
+     * Newest first by default, which is what every screen inside the app
+     * wants — a secretary opening Meetings is looking at last Thursday.
+     *
+     * A public "coming up" list wants the opposite, and getting this wrong is
+     * subtle rather than obvious: with a `from` filter and a limit, descending
+     * order returns the *furthest-out* meetings and then shows them backwards.
+     * The club page listed four meetings two months away, in reverse, and read
+     * as plausible.
+     */
+    order?: "asc" | "desc";
+  } = {},
 ): Promise<MeetingRow[]> {
   const clauses = ["club_id = ?"];
   const params: unknown[] = [clubId];
@@ -97,7 +112,10 @@ export function listMeetings(
   return db.all<MeetingRow>("meetings", {
     where: clauses.join(" AND "),
     params,
-    orderBy: "meeting_date DESC, start_time DESC",
+    orderBy:
+      opts.order === "asc"
+        ? "meeting_date ASC, start_time ASC"
+        : "meeting_date DESC, start_time DESC",
     limit: opts.limit ?? 100,
   });
 }

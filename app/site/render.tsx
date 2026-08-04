@@ -245,7 +245,12 @@ function Section({
 
 function HeroBlock({ block, ctx }: { block: Block; ctx: RenderContext }) {
   const media = ctx.media.get(str(block.mediaId));
-  const layout = str(block.layout) || "split";
+  const chosen = str(block.layout) || "split";
+  // A split hero with nothing to put in the other half is just a narrow
+  // column of text against a large empty rectangle — which is what a club that
+  // has not uploaded a photograph yet would see on their front page. Centre it
+  // instead; that reads as a decision rather than as a missing image.
+  const layout = chosen === "split" && !media ? "centred" : chosen;
   const centred = layout === "centred" || layout === "banner";
 
   const words = (

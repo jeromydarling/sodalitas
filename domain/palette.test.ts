@@ -15,6 +15,8 @@ import {
   parseTokens,
   tokensToStyle,
   auditTokens,
+  solidStep,
+  bestContrast,
   DEFAULT_TOKENS,
   AA_NORMAL,
 } from "./palette";
@@ -246,5 +248,42 @@ describe("staying inside the Rotary palette", () => {
     expect(nearestRotaryColour("#18468e")!.colour.key).toBe("royal_blue");
     expect(nearestRotaryColour("#f9ab22")!.colour.key).toBe("gold");
     expect(nearestRotaryColour("not a colour")).toBeNull();
+  });
+});
+
+describe("solidStep", () => {
+  it("keeps Rotary Gold looking like gold", () => {
+    // The bug this was written for: walking only downward from 500 turned the
+    // accent band brown. Gold sits high on the lightness scale, so the
+    // legible step is a *lighter* one carrying dark text.
+    const gold = buildRamp("#f7a81b")!;
+    const step = solidStep(gold, 500);
+    expect(step).toBeLessThanOrEqual(500);
+    expect(textOn(gold[step])).toBe("#1c1a17");
+    expect(hexToOklch(gold[step])!.l).toBeGreaterThan(0.6);
+  });
+
+  it("goes darker for a colour that needs it", () => {
+    // Grass green at 600 is 4.3:1 either way. Lighter is tried first and also
+    // fails, so it ends up deeper with white text.
+    const green = buildRamp("#009739")!;
+    expect(bestContrast(green[solidStep(green)])).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  it("finds a legible fill for every Rotary colour, at both starting points", () => {
+    for (const colour of ROTARY_COLOURS) {
+      const ramp = buildRamp(colour.hex)!;
+      for (const from of [500, 600] as const) {
+        const step = solidStep(ramp, from);
+        expect(bestContrast(ramp[step]), `${colour.name} from ${from}`).toBeGreaterThanOrEqual(
+          AA_NORMAL,
+        );
+      }
+    }
+  });
+
+  it("leaves a step that already passes exactly where it was", () => {
+    const blue = buildRamp("#17458f")!;
+    expect(solidStep(blue, 600)).toBe(600);
   });
 });

@@ -25,7 +25,12 @@ export interface Env {
   KV: KVNamespace;
   R2: R2Bucket;
   IMAGES?: unknown;
-  AI?: unknown;
+  /**
+   * Workers AI, when the binding is declared. Typed by its one method rather
+   * than as `unknown` so `env` can be passed straight to ai/provider without a
+   * cast — a cast at every call site is a cast nobody reads.
+   */
+  AI?: { run(model: string, input: unknown): Promise<unknown> };
   ASSETS?: Fetcher;
   /**
    * Cloudflare Email Service. Declared in wrangler.jsonc, so it is present in
@@ -48,6 +53,16 @@ export interface Env {
   IP_HASH_SECRET?: string;
   /** Guards /api/ops/*. Unset means those endpoints are localhost-only. */
   ADMIN_TOKEN?: string;
+  /**
+   * Cloudflare for SaaS, for clubs serving their site on their own domain.
+   * Needs only "SSL and Certificates: Edit" on the zone. Absent means a club
+   * can still record a domain and read its DNS instructions; the cron
+   * registers it when these appear.
+   */
+  CF_API_TOKEN?: string;
+  CF_ZONE_ID?: string;
+  /** What a club types into their registrar. Defaults to the Worker hostname. */
+  SITE_CNAME_TARGET?: string;
 }
 
 export interface CurrentUser {

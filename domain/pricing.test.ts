@@ -195,10 +195,14 @@ describe("competitor comparison", () => {
     }
   });
 
-  it("concedes the website builder, which is a real gap", () => {
+  it("still names a real gap, and names it specifically", () => {
     const cr = INCUMBENTS.find((i) => i.key === "clubrunner")!;
-    expect(cr.betterAt.join(" ")).toMatch(/website/i);
-    expect(cr.betterAt.join(" ")).toMatch(/more than we do/i);
+    // Event registration is the honest remaining hole. It replaced the
+    // blanket "their website builder does more than ours", which stopped
+    // being true the day we shipped one — a concession that has quietly gone
+    // stale is worse than no concession, because it reads as false modesty.
+    expect(cr.betterAt.join(" ")).toMatch(/we don't do this yet/i);
+    expect(cr.betterAt.join(" ")).not.toMatch(/more complete website builder/i);
   });
 
   it("concedes that DACdb is often already paid for by the district", () => {

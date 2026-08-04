@@ -381,8 +381,25 @@ async function seedClub(
   let cursor = today;
   while (new Date(`${cursor}T00:00:00Z`).getUTCDay() !== 4) cursor = shiftDays(cursor, -1);
 
-  for (let w = 0; w < 34; w++) {
+  /**
+   * Eight Thursdays ahead of the most recent one, as well as 34 behind it.
+   *
+   * The demo used to seed only history, which meant every "what's coming up"
+   * surface in it was empty — the club page, the meetings screen, and the
+   * website's meetings section, which is the single thing that most
+   * distinguishes our website builder from a website builder. A visitor
+   * clicking around the demo concluded the club had no meetings.
+   *
+   * Future meetings carry no attendance, because nobody has attended them.
+   */
+  const FUTURE_WEEKS = 8;
+  const PAST_WEEKS = 34;
+
+  for (let i = 0; i < FUTURE_WEEKS + PAST_WEEKS; i++) {
+    // w is weeks *back* from the most recent Thursday: negative is the future.
+    const w = i - FUTURE_WEEKS;
     const date = shiftDays(cursor, -7 * w);
+    const inPast = w >= 0;
     const meetingId = newId("meeting");
     meetingIds.push(meetingId);
     meetingRows.push({
@@ -393,14 +410,19 @@ async function seedClub(
       start_time: "12:00",
       location: "Blue Water Grill",
       kind: "regular",
-      speaker_name: w % 2 === 0 ? `${FIRST[(w * 3) % FIRST.length]} ${LAST[(w * 5) % LAST.length]}` : null,
-      speaker_topic: w % 2 === 0 ? SPEAKER_TOPICS[w % SPEAKER_TOPICS.length]! : null,
+      // Indexed on `i`, not `w`: w runs negative for the future weeks, and a
+      // negative array index gives undefined — which reaches a club page as
+      // the speaker "undefined undefined".
+      speaker_name: i % 2 === 0 ? `${FIRST[(i * 3) % FIRST.length]} ${LAST[(i * 5) % LAST.length]}` : null,
+      speaker_topic: i % 2 === 0 ? SPEAKER_TOPICS[i % SPEAKER_TOPICS.length]! : null,
       recap_status: "none",
       is_public: 1,
       cancelled: 0,
       created_at: now,
       updated_at: now,
     });
+
+    if (!inPast) continue;
 
     for (const m of members) {
       if (m.onLeave) continue;

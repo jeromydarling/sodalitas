@@ -13,7 +13,15 @@ import type { Capability } from "@domain/roles";
  * product is unreliable rather than that they lack permission. Each route's
  * loader enforces the same capability again; this only decides what to show.
  */
-const NAV: { to: string; label: string; end: boolean; needs?: Capability }[] = [
+/**
+ * `secondary` keeps an item out of the desktop row and in the account menu.
+ *
+ * The row is a fixed-width budget and adding Website spent the last of it —
+ * at 1280px the sections started colliding with the user's name. Import and
+ * Settings are the two nobody visits weekly, so they move rather than the row
+ * getting a scrollbar or the labels getting shorter.
+ */
+const NAV: { to: string; label: string; end: boolean; needs?: Capability; secondary?: boolean }[] = [
   { to: "/app", label: "This week", end: true },
   { to: "/app/people", label: "People", end: false, needs: "people.read" },
   { to: "/app/membership", label: "Membership", end: false, needs: "membership.read" },
@@ -22,10 +30,11 @@ const NAV: { to: string; label: string; end: boolean; needs?: Capability }[] = [
   { to: "/app/projects", label: "Projects", end: false, needs: "projects.read" },
   { to: "/app/tasks", label: "Tasks", end: false, needs: "tasks.read_all" },
   { to: "/app/dues", label: "Dues", end: false, needs: "dues.read" },
+  { to: "/app/site", label: "Website", end: false, needs: "site.edit" },
   { to: "/app/communio", label: "Communio", end: false, needs: "communio.read" },
   { to: "/app/district", label: "District", end: false, needs: "district.read" },
-  { to: "/app/import", label: "Import", end: false, needs: "import.run" },
-  { to: "/app/settings", label: "Settings", end: false, needs: "settings.read" },
+  { to: "/app/import", label: "Import", end: false, needs: "import.run", secondary: true },
+  { to: "/app/settings", label: "Settings", end: false, needs: "settings.read", secondary: true },
 ];
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -41,11 +50,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     // Titles are what a Rotarian recognises, and they're also the clearest
     // answer to "why can't I see that?" — you can see what you hold.
     titles: ctx.authority.titles.map((t) => t.label),
-    nav: NAV.filter((item) => !item.needs || ctx.can(item.needs)).map(({ to, label, end }) => ({
-      to,
-      label,
-      end,
-    })),
+    nav: NAV.filter((item) => !item.needs || ctx.can(item.needs)).map(
+      ({ to, label, end, secondary }) => ({ to, label, end, secondary: secondary === true }),
+    ),
   };
 }
 
@@ -79,7 +86,7 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
                 horizontal scroller with no affordance — "Meetings" rendered as
                 "Me" and eight sections were unreachable on a phone. */}
             <nav className="hidden gap-5 text-sm lg:flex" aria-label="Sections">
-              {loaderData.nav.map((item) => (
+              {loaderData.nav.filter((item) => !item.secondary).map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
@@ -98,20 +105,54 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
           </div>
 
           <div className="flex shrink-0 items-center gap-3 text-sm">
-            <div className="hidden text-right sm:block">
-              <p className="text-ink-800 dark:text-ink-200">{loaderData.user.name}</p>
-              {loaderData.titles.length > 0 && (
-                <p className="text-xs text-ink-500">{loaderData.titles.join(" · ")}</p>
-              )}
-            </div>
-            <Form method="post" action="/logout" className="hidden sm:block">
-              <button
-                type="submit"
-                className="rounded-lg px-2 py-2 text-ink-500 hover:text-ink-800 dark:hover:text-ink-200"
-              >
-                Sign out
-              </button>
-            </Form>
+            {/* On lg and up the account menu holds the sections nobody visits
+                weekly, so the row above doesn't have to carry them. Below lg
+                the burger to the right holds everything and this is hidden. */}
+            <details className="group relative hidden lg:block">
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1.5 text-right marker:content-none hover:bg-ink-100 dark:hover:bg-ink-800 [&::-webkit-details-marker]:hidden">
+                <span className="min-w-0">
+                  <span className="block max-w-40 truncate text-ink-800 dark:text-ink-200">
+                    {loaderData.user.name}
+                  </span>
+                  {loaderData.titles.length > 0 && (
+                    <span className="block max-w-40 truncate text-xs text-ink-500">
+                      {loaderData.titles.join(" · ")}
+                    </span>
+                  )}
+                </span>
+                <span aria-hidden className="text-ink-400 transition group-open:rotate-180">
+                  ⌄
+                </span>
+              </summary>
+              <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-ink-200 bg-white p-2 shadow-lg dark:border-ink-800 dark:bg-ink-900">
+                {loaderData.nav
+                  .filter((item) => item.secondary)
+                  .map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.end}
+                      className={({ isActive }) =>
+                        `block rounded-lg px-3 py-2.5 ${
+                          isActive
+                            ? "bg-ink-100 font-medium text-ink-900 dark:bg-ink-800 dark:text-ink-100"
+                            : "text-ink-700 hover:bg-ink-50 dark:text-ink-300 dark:hover:bg-ink-800/60"
+                        }`
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  ))}
+                <Form method="post" action="/logout">
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg px-3 py-2.5 text-left text-ink-700 hover:bg-ink-50 dark:text-ink-300 dark:hover:bg-ink-800/60"
+                  >
+                    Sign out
+                  </button>
+                </Form>
+              </div>
+            </details>
 
             {/* Below lg, everything lives in here. A <details> works before
                 hydration and with JavaScript off, which matters most on the
@@ -125,7 +166,10 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
                 <Icon.Close className="hidden group-open:block" />
               </summary>
               <div className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-ink-200 bg-white p-2 shadow-lg dark:border-ink-800 dark:bg-ink-900">
-                <div className="border-b border-ink-200 px-3 pb-2 sm:hidden dark:border-ink-800">
+                {/* Always shown now: the header's own name-and-title block
+                    moved to lg and up, so between sm and lg this menu is the
+                    only place it appears. */}
+                <div className="border-b border-ink-200 px-3 pb-2 dark:border-ink-800">
                   <p className="truncate text-sm text-ink-800 dark:text-ink-200">
                     {loaderData.user.name}
                   </p>

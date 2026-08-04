@@ -45,3 +45,20 @@
 # string. Without it, a development default is used — set a real one in
 # production so stored hashes can't be reversed by hashing the IPv4 space.
 # IP_HASH_SECRET=
+
+# ── Custom domains (Cloudflare for SaaS) ──────────────────────────────────────
+#
+# What lets a club serve its site at rotaryclubofsomewhere.org instead of ours.
+# Absent, the feature runs dark: a club can still add their address and read the
+# exact DNS record to create, the row sits at "pending", and the quarter-hourly
+# cron registers it the moment these land.
+#
+# CF_ZONE_ID is the zone clubs CNAME into — it must have Cloudflare for SaaS
+# enabled and a fallback origin pointing at this Worker. CF_API_TOKEN needs
+# exactly one permission on that zone: SSL and Certificates → Edit.
+#
+# Local development almost never wants these: setting them makes the domains
+# screen talk to a real Cloudflare account and ask a certificate authority for
+# real certificates.
+# CF_API_TOKEN=
+# CF_ZONE_ID=

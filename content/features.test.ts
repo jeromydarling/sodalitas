@@ -7,6 +7,7 @@
  * that quietly turns into another boast.
  */
 import { describe, it, expect } from "vitest";
+import { INCUMBENTS } from "@domain/pricing";
 import { FEATURES, featureBySlug } from "./features";
 import { LEGAL, legalBySlug } from "./legal";
 import { VOICE } from "./brand";
@@ -152,5 +153,47 @@ describe("the legal pages", () => {
     // commit as the review — not before.
     const all = LEGAL.map(legalText).join(" ");
     expect(all).toMatch(/not.*(reviewed|a substitute).*lawyer|lawyer/i);
+  });
+});
+
+/**
+ * Claims that go stale in opposite directions.
+ *
+ * When the website builder shipped, three places went out of date at once: the
+ * feature's own limit ("it's one page, not a website builder"), the comparison
+ * page's concession to ClubRunner, and the migration guide. Two of them read as
+ * *modesty*, which is exactly the kind of wrong nobody reports — a club is not
+ * going to email and say we undersold ourselves.
+ *
+ * So the honesty rule cuts both ways, and it is pinned here.
+ */
+describe("the website claim stays in step with the product", () => {
+  const website = featureBySlug("public-page")!;
+
+  it("no longer says we don't have a builder", () => {
+    expect(website.limit).not.toMatch(/not a website builder/i);
+    expect(website.limit).not.toMatch(/one page/i);
+  });
+
+  it("still states a real limit rather than none", () => {
+    // The type requires a limit; a type cannot stop it becoming "None!".
+    expect(website.limit.length).toBeGreaterThan(80);
+    expect(website.limit).toMatch(/frustrat|restrict|not a blank canvas|keep whatever/i);
+  });
+
+  it("says the thing that is actually different about it", () => {
+    // The live sections are the whole argument. If this claim ever leaves the
+    // copy, the feature has been described as a generic page builder — which
+    // is a fight we lose.
+    const body = website.body.join(" ");
+    expect(body).toMatch(/read your own records|fill(ing)? themselves in|nothing to update/i);
+  });
+
+  it("does not contradict the comparison page", () => {
+    const clubrunner = INCUMBENTS.find((i) => i.key === "clubrunner")!;
+    const conceded = clubrunner.betterAt.join(" ");
+    // We may concede free-form layout. We may not concede having no builder.
+    expect(conceded).not.toMatch(/more complete website builder/i);
+    expect(conceded).toMatch(/free-form/i);
   });
 });

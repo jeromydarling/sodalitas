@@ -237,7 +237,8 @@ export const GUIDES: Guide[] = [
         heading: "Good reasons not to move",
         paragraphs: [
           "Said plainly, because a guide that only argues one way isn't worth reading.",
-          "If your district pays for DACdb, it is effectively free to your club, and free is difficult to beat. If your club's main need is a public website with many pages that several people edit, ClubRunner does more there than we do. If your club synchronises membership data directly with Rotary International and relies on that, check carefully before moving — Sodalitas does not do it yet.",
+          "If your district pays for DACdb, it is effectively free to your club, and free is difficult to beat. If your club runs paid events — a fundraiser with ticketing, registration and a guest list — ClubRunner does that and we do not. If your club synchronises membership data directly with Rotary International and relies on that, check carefully before moving; Sodalitas does not do it yet.",
+          "On websites we used to send clubs to ClubRunner outright. We build sites now, and ours has something theirs doesn't: the meetings, projects and officers sections read your live records, so they cannot go stale. What ClubRunner still has is free-form layout — if somebody at your club wants a page arranged exactly their way, ours will frustrate them.",
           "And if the only complaint is that the current system is ugly, that is a real cost but it is smaller than the cost of a migration. Wait until there is a second reason.",
         ],
       },

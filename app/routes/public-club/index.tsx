@@ -139,7 +139,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   if (params.pageSlug) throw data("No page at that address.", { status: 404 });
 
   const [meetings, projects, officers, payments] = await Promise.all([
-    listMeetings(db, club.id, { from: today, limit: 6 }),
+    listMeetings(db, club.id, { from: today, limit: 6, order: "asc" }),
     db.all<{ name: string; summary: string | null; area_of_focus: string | null; status: string }>(
       "projects",
       {
@@ -240,7 +240,7 @@ async function loadSitePage(
   const [config, meetings, projects, officers, payments, media] = await Promise.all([
     siteConfig(db, site),
     needs.meetings
-      ? listMeetings(db, club.id, { from: today, limit: needs.meetings * 2 })
+      ? listMeetings(db, club.id, { from: today, limit: needs.meetings * 2, order: "asc" })
       : Promise.resolve([]),
     needs.projects
       ? db.all<{ name: string; summary: string | null; area_of_focus: string | null }>("projects", {

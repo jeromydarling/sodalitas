@@ -228,23 +228,28 @@ export const FEATURES: Feature[] = [
   },
   {
     slug: "public-page",
-    name: "Public club page",
-    title: "A page for your club that isn't from 2006",
+    name: "Club website",
+    title: "A club website that isn't from 2006",
     summary:
-      "Meetings, projects, officers and a join form, updated from the same records you already keep.",
+      "As many pages as you want, on your own domain, with the meetings and projects filling themselves in from the records you already keep.",
     icon: "People",
     body: [
       "Most Rotary club websites are maintained by one member who learned the tool in 2011 and would very much like to stop. They go stale because updating them is a separate act from running the club.",
-      "Your public page is generated from what's already in the system. Record next week's speaker and the page has it. Mark a project public and it appears. The join form goes straight into your membership pipeline rather than to an inbox nobody watches.",
+      "Here it isn't. Three of the section types read your own records when a visitor loads the page — the meetings section is your calendar, the projects section is your projects, the officers section is this year's board. Record next week's speaker and the site has it. Nobody updates the website, because there is nothing to update.",
+      "Around those, you write ordinary pages: your history, your committees, an FAQ, the auction. Sections rather than a blank text box, so the result is laid out properly whether or not anybody on the board has done this before. If you'd rather not start from nothing, it will draft a page from your club's own record and hand it to you to edit.",
+      "Point your club's domain at it and we obtain the certificate. Your site serves at your address; the private side never does.",
     ],
     does: [
-      "Meetings, speakers, public projects and officers, updated automatically",
+      "As many pages as you like, built from sections rather than a blank box",
+      "Meetings, projects and officers that update themselves — nobody maintains them",
+      "Your own domain, with the certificate handled, at no extra cost",
+      "Colour and type from Rotary's own palette, with the contrast checked for you",
       "A join form that reaches the membership chair, with spam handled",
       "Donations, if the club wants them, straight into its own Stripe account",
       "Never shows your roster",
     ],
     limit:
-      "It's one page, not a website builder. A club that needs many pages several people edit will get more from ClubRunner today — we say so on the comparison page too.",
+      "It's a section builder, not a blank canvas — you choose from about eighteen kinds of section and fill them in, rather than dragging things wherever you like. That is a deliberate trade for a board that changes every July: it means nobody can make a page that looks wrong, and it means we can restyle every club's site at once. If your club has someone who genuinely wants pixel control, they will find this frustrating and should keep whatever they're using.",
   },
 ];
 

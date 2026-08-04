@@ -477,6 +477,15 @@ export interface VersionRow {
   created_at: string;
 }
 
+/**
+ * Record the page's current content as a version.
+ *
+ * Skips when the newest version already holds exactly this content. Without
+ * that check, publishing an unchanged page a second time — which officers do,
+ * because pressing the button again is what you do when you aren't sure it
+ * worked — writes another identical row, and after a fortnight the history
+ * panel is six copies of the same thing and useless for the one job it has.
+ */
 async function snapshot(
   db: TenantDb,
   page: PageRow,
@@ -484,7 +493,20 @@ async function snapshot(
   label: string | null,
   now: string,
   userId: string | null,
-): Promise<string> {
+): Promise<string | null> {
+  const latest = await db.first<{ id: string; blocks_json: string; title: string }>(
+    "site_page_versions",
+    {
+      columns: "id, blocks_json, title",
+      where: "page_id = ?",
+      params: [page.id],
+      orderBy: "created_at DESC",
+    },
+  );
+  if (latest && latest.blocks_json === page.blocks_json && latest.title === page.title) {
+    return null;
+  }
+
   const id = newId("siteVersion");
   await db.insert("site_page_versions", {
     id,

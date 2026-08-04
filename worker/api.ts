@@ -68,6 +68,8 @@ api.get("/health", async (c) => {
       // through Cloudflare or Resend — and that is the first thing you want to
       // know when a message hasn't arrived.
       mailProvider: provider,
+      // Whether a club can point its own domain at its site yet.
+      customDomains: Boolean(env.CF_API_TOKEN && env.CF_ZONE_ID),
     },
   });
 });

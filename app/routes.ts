@@ -71,6 +71,13 @@ export default [
       route("projects", "routes/app/projects.tsx"),
       route("dues", "routes/app/dues.tsx"),
       route("communio", "routes/app/communio.tsx"),
+      // The website builder. `site/brand` and `site/domains` come before
+      // `site/:pageId` so those two words can never be read as a page id.
+      route("site", "routes/app/site.tsx"),
+      route("site/brand", "routes/app/site-brand.tsx"),
+      route("site/domains", "routes/app/site-domains.tsx"),
+      route("site/media", "routes/app/site-media.tsx"),
+      route("site/:pageId", "routes/app/site-page.tsx"),
       route("district", "routes/app/district.tsx"),
       route("settings", "routes/app/settings.tsx"),
     ]),

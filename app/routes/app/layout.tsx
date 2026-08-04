@@ -64,7 +64,7 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
           when you're ready.
         </div>
       )}
-      <header className="border-b border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900">
+      <header className="border-b border-ink-200 bg-white/85 backdrop-blur-md dark:border-ink-800 dark:bg-ink-900/85">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-3">
           <div className="flex min-w-0 items-center gap-6">
             <Link

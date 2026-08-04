@@ -4,7 +4,7 @@ import { brand, PROMISES } from "@content/brand";
 import { FEATURES } from "@content/features";
 import { GUIDES } from "@content/guides";
 import { PLANS } from "@domain/pricing";
-import { Icon, Reveal, Eyebrow } from "~/brand";
+import { Icon, Reveal, Eyebrow, Figure } from "~/brand";
 import { RosterScreen, MeetingScreen, DuesScreen, SignalsScreen, HealthScreen } from "~/screens";
 import { Media, hasMedia } from "~/media";
 import {
@@ -93,7 +93,7 @@ export default function Home() {
       {/* ── Hero: the whole product, with the screens right there ── */}
       <section className="aurora relative overflow-hidden border-b border-ink-200 dark:border-ink-800">
         <div className="mx-auto max-w-6xl px-6 pt-20 pb-16 sm:pt-24">
-          <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,1fr)_26rem]">
+          <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,1fr)_26rem]">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white/70 px-3 py-1 text-xs font-medium text-ink-600 dark:border-ink-800 dark:bg-ink-900/70 dark:text-ink-400">
                 <Icon.Spark className="text-gold-500" width="1em" height="1em" />
@@ -131,15 +131,17 @@ export default function Home() {
             </div>
 
             {/* Real DOM, not a screenshot: selectable, theme-aware, and a
-                few hundred bytes rather than a few hundred kilobytes. */}
-            <div className="relative hidden lg:block">
+                few hundred bytes rather than a few hundred kilobytes.
+                Offset rather than overlapped — the floating card used to sit on
+                top of the roster's own rows and hang out of the section. */}
+            <div className="hidden space-y-4 lg:block">
               <RosterScreen />
-              <MeetingScreen className="absolute -right-6 -bottom-24 w-72 shadow-lg" />
+              <SignalsScreen className="ml-8" />
             </div>
           </div>
 
           {hasMedia("home-hero") && (
-            <div className="mt-32 lg:mt-40">
+            <div className="mt-16">
               <Media slot="home-hero" priority className="shadow-sm" />
             </div>
           )}
@@ -147,7 +149,7 @@ export default function Home() {
       </section>
 
       {/* ── What it runs ── */}
-      <section className="mx-auto max-w-6xl px-6 py-20 lg:pt-32">
+      <section className="mx-auto max-w-6xl px-6 py-20">
         <div className="max-w-2xl">
           <Eyebrow>The whole club</Eyebrow>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
@@ -191,7 +193,7 @@ export default function Home() {
       </section>
 
       {/* ── Screens ── */}
-      <section className="border-y border-ink-200 bg-white/50 dark:border-ink-800 dark:bg-ink-900/30">
+      <section className="band border-y border-ink-200 dark:border-ink-800">
         <div className="mx-auto max-w-6xl px-6 py-20">
           <div className="max-w-2xl">
             <Eyebrow>What you'll be using</Eyebrow>
@@ -226,9 +228,12 @@ export default function Home() {
             <h2 className="mt-3 text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
               It tells you who's slipping away, while there's still time
             </h2>
-            <p className="mt-5 text-lg text-pretty text-ink-600 dark:text-ink-300">
-              North American Rotary membership has fallen by roughly a third in twenty years.
-              Very little of that was people leaving in a disagreement — most of it was people
+            <div className="mt-8 flex flex-wrap gap-10 border-y border-ink-200 py-6 dark:border-ink-800">
+              <Figure value="~⅓" label="of North American Rotary membership, gone in twenty years" />
+              <Figure value="7" label="names a week, at most — a list somebody acts on" />
+            </div>
+            <p className="mt-6 text-lg text-pretty text-ink-600 dark:text-ink-300">
+              Very little of that was people leaving in a disagreement. Most of it was people
               drifting quietly out of clubs that were doing their best and had no way to notice
               in time.
             </p>

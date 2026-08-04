@@ -162,11 +162,38 @@ export function Reveal({
   return <div className={`reveal reveal-${delay} ${className}`}>{children}</div>;
 }
 
-/** A quiet label above a section heading. */
-export function Eyebrow({ children }: { children: ReactNode }) {
+/**
+ * A quiet label above a section heading.
+ *
+ * The gold rule is the only place the second brand colour appears at this size,
+ * which is exactly why it works — it marks the start of a section without
+ * competing with the heading underneath it.
+ */
+export function Eyebrow({ children, tone = "brand" }: { children: ReactNode; tone?: "brand" | "gold" }) {
   return (
-    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-600 dark:text-brand-500">
-      {children}
+    <p className="flex items-center gap-2.5 text-xs font-semibold tracking-[0.14em] uppercase">
+      <span
+        aria-hidden
+        className={`h-px w-6 ${tone === "gold" ? "bg-gold-500" : "bg-brand-500"}`}
+      />
+      <span className={tone === "gold" ? "text-gold-700 dark:text-gold-500" : "text-brand-700 dark:text-brand-400"}>
+        {children}
+      </span>
     </p>
+  );
+}
+
+/**
+ * A statistic set in the display face.
+ *
+ * For the one or two numbers per page that carry a section. Anything more and
+ * it stops being emphasis.
+ */
+export function Figure({ value, label }: { value: string; label: string }) {
+  return (
+    <div>
+      <div className="figure text-4xl text-ink-900 sm:text-5xl dark:text-ink-50">{value}</div>
+      <div className="mt-1.5 text-sm text-pretty text-ink-600 dark:text-ink-400">{label}</div>
+    </div>
   );
 }

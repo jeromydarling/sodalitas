@@ -10,9 +10,19 @@ import type { Route } from "./+types/root";
 import { brand } from "@content/brand";
 import "./app.css";
 
-export const links: Route.LinksFunction = () => [
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
-];
+/**
+ * No `preconnect` to a font CDN, deliberately.
+ *
+ * There was one here, to fonts.googleapis.com, opening a DNS lookup and a TLS
+ * handshake to Google on every page load — for fonts that were never requested
+ * from there. Both faces are self-hosted and bundled, so the only thing that
+ * link achieved was contradicting the privacy page, which says there are no
+ * third-party requests.
+ *
+ * Vite fingerprints and preloads the font files from the CSS, so there is
+ * nothing to declare here.
+ */
+export const links: Route.LinksFunction = () => [];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (

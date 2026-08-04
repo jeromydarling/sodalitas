@@ -84,10 +84,14 @@ export default function FeatureDetail({ loaderData }: Route.ComponentProps) {
             }
           >
             <div className={Screen || showMedia ? "" : "max-w-3xl"}>
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-600 dark:text-brand-500">
-                <Glyph width="1.6em" height="1.6em" />
-              </span>
-              <Eyebrow>{feature.name}</Eyebrow>
+              {/* Icon and label on one line. Stacked, the eyebrow's rule ran
+                  into the icon tile and read as a stray mark. */}
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-500">
+                  <Glyph width="1.3em" height="1.3em" />
+                </span>
+                <Eyebrow>{feature.name}</Eyebrow>
+              </div>
               <h1 className="mt-3 text-4xl font-semibold tracking-tight text-balance text-ink-900 sm:text-5xl dark:text-ink-50">
                 {feature.title}
               </h1>

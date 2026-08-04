@@ -1,45 +1,104 @@
 @import "tailwindcss";
 
 /**
- * Sodalitas looks like a tool, not a brochure. Dense where information is
- * dense, calm everywhere else. Closer to Linear than to association software.
+ * The design system.
  *
- * Rotary's blue and gold are the anchor without being worn as a costume — a
- * club's own identity should sit on top of this, not compete with it.
+ * Sodalitas looks like a tool, not a brochure. Dense where information is
+ * dense, calm everywhere else — closer to Linear than to association software.
+ *
+ * Two things carry the character, and both are deliberate:
+ *
+ * **Fraunces for display.** Rotary is a hundred and twenty years old and meets
+ * in function rooms; a geometric sans headline would make it look like a
+ * developer tool that wandered in. Fraunces is an old-style serif with an
+ * optical-size axis, so a 60px headline gets high contrast and fine serifs
+ * while a 20px subhead stays sturdy. It reads civic and warm rather than
+ * fashionable, which is the line to walk.
+ *
+ * **Inter for everything else.** The screens are tables of names and numbers.
+ * Inter was drawn for exactly that: tall x-height, unambiguous 1/l/I, real
+ * tabular figures.
+ *
+ * Both are self-hosted. The privacy page says there are no third-party requests
+ * and that has to be true — a Google Fonts link would make it a lie, and would
+ * put a DNS lookup and a TLS handshake in front of the first paint. Latin
+ * subsets, variable, 116 KB for the pair: less than one hero photograph.
  */
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("./fonts/fraunces.woff2") format("woff2-variations");
+  font-weight: 400 700;
+  font-style: normal;
+  /* Swap, not block: a headline in the fallback for 100ms beats a blank page. */
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("./fonts/inter.woff2") format("woff2-variations");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
-  --color-ink-50:  oklch(0.98 0.005 250);
-  --color-ink-100: oklch(0.95 0.008 250);
-  --color-ink-200: oklch(0.89 0.010 250);
-  --color-ink-300: oklch(0.78 0.012 250);
-  --color-ink-400: oklch(0.63 0.014 250);
-  --color-ink-500: oklch(0.52 0.016 250);
-  --color-ink-600: oklch(0.42 0.018 250);
-  --color-ink-700: oklch(0.34 0.020 250);
-  --color-ink-800: oklch(0.24 0.020 250);
-  --color-ink-900: oklch(0.16 0.018 250);
-  --color-ink-950: oklch(0.11 0.016 250);
+  /* ── Ink ────────────────────────────────────────────────────────────────
+     Warmed off the old blue-grey. A neutral with a little brown in it reads
+     as paper and ink; a blue-tinted one reads as a screenshot of an IDE, and
+     this product is used by people who meet for lunch. */
+  --color-ink-50:  oklch(0.985 0.004 75);
+  --color-ink-100: oklch(0.960 0.006 75);
+  --color-ink-200: oklch(0.905 0.008 72);
+  --color-ink-300: oklch(0.800 0.010 70);
+  --color-ink-400: oklch(0.655 0.012 68);
+  --color-ink-500: oklch(0.535 0.014 66);
+  --color-ink-600: oklch(0.435 0.016 64);
+  --color-ink-700: oklch(0.350 0.018 62);
+  --color-ink-800: oklch(0.255 0.018 60);
+  --color-ink-900: oklch(0.205 0.017 58);
+  --color-ink-950: oklch(0.155 0.015 56);
 
-  /* Rotary azure, desaturated enough to live behind text all day. */
-  --color-brand-50:  oklch(0.97 0.020 250);
-  --color-brand-100: oklch(0.93 0.045 250);
-  --color-brand-300: oklch(0.75 0.110 250);
-  --color-brand-500: oklch(0.55 0.160 250);
-  --color-brand-600: oklch(0.48 0.165 250);
-  --color-brand-700: oklch(0.40 0.150 250);
+  /* ── Brand ──────────────────────────────────────────────────────────────
+     Rotary azure, deepened. The old ramp topped out too light and washed
+     against white; this one has a full range so a button, a link and a tinted
+     panel can all be the same colour at different jobs. */
+  --color-brand-50:  oklch(0.975 0.014 250);
+  --color-brand-100: oklch(0.940 0.035 250);
+  --color-brand-200: oklch(0.885 0.065 250);
+  --color-brand-300: oklch(0.790 0.110 252);
+  --color-brand-400: oklch(0.680 0.150 254);
+  --color-brand-500: oklch(0.575 0.175 255);
+  --color-brand-600: oklch(0.495 0.180 256);
+  --color-brand-700: oklch(0.415 0.160 257);
+  --color-brand-800: oklch(0.335 0.125 258);
+  --color-brand-900: oklch(0.265 0.090 258);
 
-  /* Rotary gold, reserved for accents. Never for body text. */
-  --color-gold-300: oklch(0.86 0.110 85);
-  --color-gold-500: oklch(0.75 0.140 85);
-  --color-gold-600: oklch(0.66 0.135 85);
+  /* ── Gold ───────────────────────────────────────────────────────────────
+     Rotary gold. Accent only — never body text, never a large field. It is
+     there to be the second voice in a two-colour conversation. */
+  --color-gold-50:  oklch(0.980 0.020 85);
+  --color-gold-100: oklch(0.950 0.045 85);
+  --color-gold-200: oklch(0.905 0.080 85);
+  --color-gold-300: oklch(0.855 0.110 85);
+  --color-gold-400: oklch(0.800 0.130 83);
+  --color-gold-500: oklch(0.745 0.140 80);
+  --color-gold-600: oklch(0.650 0.130 76);
+  --color-gold-700: oklch(0.530 0.110 72);
 
-  /* Status. Muted on purpose — a dashboard of alarms stops being read. */
-  --color-steady-500: oklch(0.62 0.110 155);
-  --color-watch-500:  oklch(0.75 0.120 75);
-  --color-risk-500:   oklch(0.58 0.150 25);
+  /* ── Status ─────────────────────────────────────────────────────────────
+     Muted on purpose. A dashboard of alarms stops being read, and these sit
+     beside a member's name — the colour is a hint, never an accusation. */
+  --color-steady-500: oklch(0.620 0.115 158);
+  --color-steady-600: oklch(0.520 0.105 158);
+  --color-watch-500:  oklch(0.755 0.125 72);
+  --color-watch-600:  oklch(0.640 0.120 68);
+  --color-risk-500:   oklch(0.585 0.155 25);
+  --color-risk-600:   oklch(0.495 0.150 25);
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
 }
 
 @layer base {
@@ -52,6 +111,8 @@
     background-color: var(--color-ink-50);
     color: var(--color-ink-800);
     font-family: var(--font-sans);
+    /* Inter's own optical-size axis, plus contextual alternates. */
+    font-optical-sizing: auto;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
   }
@@ -63,13 +124,49 @@
     }
   }
 
+  /**
+   * Headings take the display face.
+   *
+   * Set here rather than per-component so nothing has to remember. The optical
+   * size axis is driven off the rendered size, which is the whole reason to
+   * use a variable serif: the same family gets delicate at 60px and sturdy at
+   * 18px without a second file.
+   *
+   * `wght` stays at 500-600 rather than 700 — Fraunces at full weight is
+   * shouty, and this product does not shout at volunteers.
+   */
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 20, "WONK" 0;
+    letter-spacing: -0.015em;
+  }
+
+  h1 {
+    font-weight: 600;
+  }
+
+  h2, h3 {
+    font-weight: 550;
+  }
+
+  /* Tables and anything numeric stay on Inter with tabular figures, so
+     columns of money line up and a changing number doesn't reflow its row. */
+  table, .tabular-nums, [class*="tabular"] {
+    font-variant-numeric: tabular-nums;
+  }
+
   /* Focus is always visible. Club officers turn over every year and a good
      share of them navigate by keyboard; hiding the ring to look tidy makes
      the product unusable for them. */
   :focus-visible {
     outline: 2px solid var(--color-brand-500);
     outline-offset: 2px;
-    border-radius: 2px;
+    border-radius: 3px;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--color-brand-500) 22%, transparent);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -131,11 +228,37 @@
     }
   }
 
-  /* The one gradient in the product, behind hero sections only. */
+  /**
+   * Hero wash.
+   *
+   * Three stops rather than two, and the gold one sits low and right so it
+   * reads as late light across a room rather than as a gradient. Kept under
+   * 15% mix everywhere — the moment a marketing gradient is legible as a
+   * gradient, it has become the subject.
+   */
   .aurora {
     background-image:
-      radial-gradient(60rem 30rem at 15% -10%, color-mix(in oklch, var(--color-brand-500) 14%, transparent), transparent 70%),
-      radial-gradient(45rem 25rem at 95% 0%, color-mix(in oklch, var(--color-gold-500) 10%, transparent), transparent 65%);
+      radial-gradient(58rem 30rem at 12% -12%, color-mix(in oklch, var(--color-brand-500) 15%, transparent), transparent 68%),
+      radial-gradient(42rem 26rem at 88% 4%, color-mix(in oklch, var(--color-gold-500) 12%, transparent), transparent 64%),
+      radial-gradient(36rem 22rem at 55% 110%, color-mix(in oklch, var(--color-brand-300) 10%, transparent), transparent 70%);
+  }
+  @media (prefers-color-scheme: dark) {
+    .aurora {
+      background-image:
+        radial-gradient(58rem 30rem at 12% -12%, color-mix(in oklch, var(--color-brand-500) 20%, transparent), transparent 68%),
+        radial-gradient(42rem 26rem at 88% 4%, color-mix(in oklch, var(--color-gold-600) 12%, transparent), transparent 64%),
+        radial-gradient(36rem 22rem at 55% 110%, color-mix(in oklch, var(--color-brand-700) 22%, transparent), transparent 70%);
+    }
+  }
+
+  /** A section that needs to sit back from the one above it. */
+  .band {
+    background-color: color-mix(in oklch, var(--color-ink-100) 55%, var(--color-ink-50));
+  }
+  @media (prefers-color-scheme: dark) {
+    .band {
+      background-color: color-mix(in oklch, var(--color-ink-900) 45%, var(--color-ink-950));
+    }
   }
 
   /* Hairline rule that fades at both ends, for section breaks. */
@@ -159,5 +282,19 @@
         transparent
       );
     }
+  }
+
+  /**
+   * A number that should read as a figure rather than as text.
+   *
+   * Fraunces with a high optical size, for the one or two places a statistic
+   * carries a section — a club health score, a savings total.
+   */
+  .figure {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 120, "SOFT" 0, "WONK" 0;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
   }
 }

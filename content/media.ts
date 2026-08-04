@@ -50,10 +50,30 @@ export interface MediaSlot {
   usedOn: string;
 }
 
-/** Appended to every prompt, so the set looks like one set. */
+/**
+ * Appended to every prompt, so the set looks like one set.
+ *
+ * The negatives are longer than they look like they need to be, and each one
+ * is here because the model did it anyway on the first run:
+ *
+ *   **Faces.** "No recognisable faces" was read as "no *famous* faces" and
+ *   produced eight volunteers in sharp focus. Generated people are the single
+ *   clearest AI tell on a marketing site, and this product's whole argument is
+ *   that it doesn't make things up. So the instruction is now positive and
+ *   specific — say what the camera sees, not what it must avoid.
+ *
+ *   **Letterboxing.** Asked for a 16/9 landscape, FLUX drew a widescreen
+ *   *photograph* — black cinema bars baked into the pixels, which render as a
+ *   black band on the page.
+ *
+ *   **Signage.** "No text" still produced shopfronts lettered in convincing
+ *   gibberish. Blank signage has to be asked for.
+ */
 export const HOUSE_STYLE =
   "Natural available light, muted colour, shallow depth of field, documentary photography, " +
-  "unposed, no text, no logos, no watermarks, no recognisable faces, 35mm";
+  "unposed, 35mm. Fills the entire frame edge to edge — no letterboxing, no black bars, " +
+  "no borders, no vignette frame. All signs and labels blank: no text, no lettering, " +
+  "no shop names, no logos, no watermarks.";
 
 export const MEDIA: MediaSlot[] = [
   {
@@ -77,18 +97,27 @@ export const MEDIA: MediaSlot[] = [
   },
   {
     key: "guests-spot",
+    // Rewritten after the first run put two people in sharp three-quarter
+    // profile. "Seen from behind" wasn't enough — the camera position has to
+    // be stated, and the faces ruled out in the same breath.
     prompt:
-      "Two people seen from behind at the edge of a busy function room, one gesturing " +
-      "towards the tables as if introducing the other. Warm light, out of focus crowd beyond.",
+      "Photographed from directly behind two people standing at the edge of a busy function " +
+      "room. The camera is behind them at shoulder height; we see the backs of their heads and " +
+      "their shoulders only, and no face is visible anywhere in the picture. One has an arm " +
+      "raised towards the tables. Warm light, the crowd beyond thrown well out of focus.",
     alt: "One member introducing a visitor to the room",
     aspect: "4/3",
     usedOn: "/features/guests",
   },
   {
     key: "projects-spot",
+    // "Volunteers' hands… no faces" produced eight full-length volunteers.
+    // The fix is to describe the crop rather than to forbid the subject.
     prompt:
-      "Volunteers' hands sorting tinned food into cardboard boxes on a trestle table in a " +
-      "church hall. Daylight, no faces, work in progress.",
+      "Close overhead crop of a trestle table, camera looking straight down. Two pairs of " +
+      "hands and forearms reach in from the edges of the frame to pack tins into cardboard " +
+      "boxes. Nothing above the elbows is in shot and there are no people visible. Daylight " +
+      "from a high window, work half finished.",
     alt: "Volunteers sorting donated food into boxes at a service project",
     aspect: "4/3",
     usedOn: "/features/projects",
@@ -104,9 +133,12 @@ export const MEDIA: MediaSlot[] = [
   },
   {
     key: "district-spot",
+    // Came back letterboxed: a widescreen *photograph*, black bars and all,
+    // inside a 16/9 canvas. Asking for the frame to be filled is the fix.
     prompt:
       "A wide daylight view over a small city and its surrounding towns from a hillside, " +
-      "soft haze, no landmarks identifiable.",
+      "soft haze, no landmarks identifiable. The photograph fills the whole frame corner to " +
+      "corner with no bars, borders or matting of any kind.",
     alt: "The spread of towns a Rotary district covers",
     aspect: "16/9",
     usedOn: "/features/district",

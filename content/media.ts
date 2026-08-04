@@ -171,8 +171,8 @@ export const MEDIA: MediaSlot[] = [
   {
     key: "home-welcome",
     prompt:
-      "Two women greeting each other just inside the door of a hall — one in her fifties with " +
-      "a hand on the other's arm, welcoming a visitor in her thirties who is still holding her " +
+      "Exactly two women greeting each other just inside the door of a hall: a member in her " +
+      "fifties with a welcoming hand out, and a visitor in her thirties still holding her " +
       "coat. Both smiling, caught mid-sentence rather than posed. Warm light from the room " +
       "beyond, thrown out of focus.",
     alt: "A member welcoming a visitor at the door",
@@ -186,9 +186,13 @@ export const MEDIA: MediaSlot[] = [
     // reconcile — street, glass, interior — and it resolved them as a
     // triptych with a hard seam and an invented neon sign. One plane, and
     // three people rather than a room of them.
+    // "…and two others listening" is how four white men in overcoats got in.
+    // Every person in a prompt gets described or the model supplies its own,
+    // and the one it supplies is always the same.
     prompt:
-      "Three people standing talking with coats on at the end of an evening meeting, nobody " +
-      "in a hurry to leave — a man in his thirties laughing, two others listening. Stacked " +
+      "Exactly three people standing talking with coats on at the end of an evening meeting, " +
+      "nobody in a hurry to leave — a Black woman in her thirties laughing, a man in his " +
+      "fifties with his hands in his pockets, a woman in her twenties beside him. Stacked " +
       "chairs and a cleared table behind them, warm lamplight overhead, the rest of the hall " +
       "dark.",
     alt: "Three members still talking after the meeting has finished",
@@ -226,9 +230,10 @@ export const MEDIA: MediaSlot[] = [
     // blank badges by the door is what a club that expects visitors looks
     // like, and it says it without a single person in frame.
     prompt:
-      "A club member in his forties leaning in to say something to a first-time visitor beside " +
-      "him at a lunch table, both half turned towards each other and smiling. Plates and " +
-      "glasses in front of them, the room behind out of focus.",
+      "Exactly two people at a lunch table: a South Asian woman in her forties leaning in to " +
+      "say something to a first-time visitor beside her, a man in his twenties, both half " +
+      "turned towards each other and smiling. Plates and glasses in front of them, the room " +
+      "behind out of focus.",
     alt: "A member sitting with a visitor at lunch",
     aspect: "4/3",
     treatment: "plate",

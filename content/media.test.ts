@@ -198,6 +198,20 @@ describe("the direction on people", () => {
     expect(vague, `these show people without saying who: ${vague.join(", ")}`).toEqual([]);
   });
 
+  it("leaves nobody in the frame undescribed", () => {
+    // The specific hole the previous test had. "A man in his thirties
+    // laughing, and two others listening" passes an age check and still
+    // hands the model two blank slots — which it filled with two more white
+    // men in overcoats. Anyone who appears has to be described.
+    const PLACEHOLDER = /\b(two|three|a few|several|some) others?\b|\bthe others?\b|\banother person\b|\bothers listening\b/i;
+    const lazy = MEDIA.filter((m) => PLACEHOLDER.test(m.prompt)).map((m) => m.key);
+
+    expect(
+      lazy,
+      `these leave a person for the model to invent: ${lazy.join(", ")}`,
+    ).toEqual([]);
+  });
+
   it("does not let the homepage be a set of empty rooms", () => {
     // The actual failure, stated as an invariant. One wide shot of a hall
     // with nobody in it read as a club that had already died; four of them

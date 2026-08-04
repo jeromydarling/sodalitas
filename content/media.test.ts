@@ -15,7 +15,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { MEDIA, HOUSE_STYLE, promptFor, mediaSlot } from "./media";
+import { MEDIA, HOUSE_STYLE, FILM, promptFor, mediaSlot } from "./media";
 import { FEATURES } from "./features";
 
 /** Every .tsx under app/, concatenated. Cheap enough at this size. */
@@ -55,8 +55,29 @@ describe("the registry", () => {
   });
 
   it("looks a slot up by key", () => {
-    expect(mediaSlot("home-hero")?.aspect).toBe("16/9");
+    expect(mediaSlot("home-hero")?.treatment).toBe("backdrop");
     expect(mediaSlot("nope")).toBeUndefined();
+  });
+
+  it("gives a backdrop a wide frame", () => {
+    // A backdrop cropped from a 4:3 render is a portrait with its sides cut
+    // off, and the composition the prompt asked for goes with them.
+    for (const slot of MEDIA.filter((m) => m.treatment === "backdrop" || m.treatment === "band")) {
+      expect(slot.aspect, slot.key).toBe("21/9");
+    }
+  });
+
+  it("never gives a backdrop alt text", () => {
+    // It sits at 18% behind a headline. There is nothing there to describe,
+    // and a screen reader announcing it is noise.
+    for (const slot of MEDIA.filter((m) => m.treatment === "backdrop")) {
+      expect(slot.alt, slot.key).toBe("");
+    }
+  });
+
+  it("folds the treatment into the prompt", () => {
+    expect(promptFor(mediaSlot("home-hero")!)).toMatch(/composed as a background/i);
+    expect(promptFor(mediaSlot("home-welcome")!)).toMatch(/close in on one subject/i);
   });
 });
 
@@ -127,8 +148,50 @@ describe("the house style", () => {
     expect(HOUSE_STYLE).toMatch(/no letterboxing|no black bars/i);
   });
 
-  it("keeps the set looking like one set", () => {
-    expect(HOUSE_STYLE).toMatch(/natural.*light/i);
-    expect(HOUSE_STYLE).toMatch(/documentary/i);
+  it("names a film stock rather than describing a mood", () => {
+    // "Natural light, muted colour" produced a clean digital render with the
+    // saturation pulled down — which is what the first set looked like. A
+    // named stock with grain and halation produces something that reads as
+    // photographed, and the imperfection is most of the reason.
+    expect(FILM).toMatch(/35mm/i);
+    expect(FILM).toMatch(/portra/i);
+    expect(FILM).toMatch(/grain/i);
+    expect(FILM).toMatch(/halation/i);
+    expect(HOUSE_STYLE).toContain(FILM);
+  });
+});
+
+describe("the direction on people", () => {
+  const prompts = MEDIA.map((m) => m.prompt).join(" ");
+
+  it("says who is in the room wherever a group appears", () => {
+    // The first set left it unsaid and the model chose: a sparse group of
+    // elderly people in a church hall, on the front page of a product about
+    // clubs not dying. Where a group is described at all, the age range is
+    // now named.
+    const withGroups = MEDIA.filter((m) => /group|people|crowd|party/i.test(m.prompt));
+    expect(withGroups.length).toBeGreaterThan(2);
+
+    const vague = withGroups
+      .filter((m) => !/mixed[- ]age|thirties|mixed group/i.test(m.prompt))
+      .map((m) => m.key);
+
+    expect(vague, `these describe a group without saying who's in it: ${vague.join(", ")}`).toEqual(
+      [],
+    );
+  });
+
+  it("shows a room as busy rather than as empty", () => {
+    // Motion blur and close crops, which is how a room reads as alive without
+    // any face being rendered. Exactly one slot is allowed to be about
+    // emptiness, and that's the retention page, where it's the argument.
+    expect(prompts).toMatch(/motion blur|long exposure|mid-movement/i);
+    const empty = MEDIA.filter((m) => /nobody in frame|nobody about|nobody present/i.test(m.prompt));
+    expect(empty.map((m) => m.key).sort()).toEqual([
+      "about-hero",
+      "contact-spot",
+      "handover-spot",
+      "retention-hero",
+    ]);
   });
 });

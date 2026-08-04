@@ -47,6 +47,10 @@ const MODEL = process.env.MODEL || "@cf/black-forest-labs/flux-1-schnell";
 
 const SIZES: Record<MediaSlot["aspect"], { width: number; height: number }> = {
   "16/9": { width: 1280, height: 720 },
+  // Banners and the hero backdrop. Wider than the model's comfortable range,
+  // which is the point — a 21:9 frame forces a horizontal composition rather
+  // than a square one with the sides cropped off by CSS later.
+  "21/9": { width: 1536, height: 640 },
   "4/3": { width: 1024, height: 768 },
   "3/2": { width: 1200, height: 800 },
   "1/1": { width: 1024, height: 1024 },

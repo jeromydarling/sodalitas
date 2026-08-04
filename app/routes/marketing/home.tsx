@@ -6,7 +6,7 @@ import { GUIDES } from "@content/guides";
 import { PLANS } from "@domain/pricing";
 import { Icon, Reveal, Eyebrow, Figure } from "~/brand";
 import { RosterScreen, MeetingScreen, DuesScreen, SignalsScreen, HealthScreen } from "~/screens";
-import { Media, hasMedia } from "~/media";
+import { Media, MediaBand, MediaBackdrop, hasMedia } from "~/media";
 import {
   marketingMeta, organizationSchema, softwareSchema, faqSchema, jsonLd,
 } from "~/seo";
@@ -91,7 +91,12 @@ export default function Home() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(faqSchema(FAQS)) }} />
 
       {/* ── Hero: the whole product, with the screens right there ── */}
-      <section className="aurora relative overflow-hidden border-b border-ink-200 dark:border-ink-800">
+      {/* A photograph *behind* the hero rather than beside it. Faded to a
+          wash, masked out at the bottom so the section below starts without an
+          edge. See MediaBackdrop — the aurora gradient still does the colour,
+          this only adds the sense of a real room. */}
+      <section className="aurora relative isolate overflow-hidden border-b border-ink-200 dark:border-ink-800">
+        <MediaBackdrop slot="home-hero" />
         <div className="mx-auto max-w-6xl px-6 pt-20 pb-16 sm:pt-24">
           <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,1fr)_26rem]">
             <div>
@@ -143,11 +148,6 @@ export default function Home() {
             </div>
           </div>
 
-          {hasMedia("home-hero") && (
-            <div className="mt-16">
-              <Media slot="home-hero" priority className="shadow-sm" />
-            </div>
-          )}
         </div>
       </section>
 
@@ -194,6 +194,11 @@ export default function Home() {
           </Link>
         </div>
       </section>
+
+      {/* The work, between what the product runs and what it looks like.
+          Wordless on purpose — it is a breath between two dense sections, and
+          a caption would turn it into another thing to read. */}
+      <MediaBand slot="home-work" />
 
       {/* ── Screens ── */}
       <section className="band border-y border-ink-200 dark:border-ink-800">
@@ -295,9 +300,18 @@ export default function Home() {
       {/* ── Promises ── */}
       <section className="border-t border-ink-200 dark:border-ink-800">
         <div className="mx-auto max-w-6xl px-6 py-20">
-          <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
-            Built around the year a club actually has
-          </h2>
+          {/* The square sits beside the heading rather than above the grid:
+              it's a small warm thing next to a list of claims, which is the
+              only job a picture has in a section like this. Hidden below md,
+              where it would push the list a full screen down. */}
+          <div className="grid items-center gap-10 md:grid-cols-[minmax(0,1fr)_14rem]">
+            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance text-ink-900 sm:text-4xl dark:text-ink-50">
+              Built around the year a club actually has
+            </h2>
+            {hasMedia("home-welcome") && (
+              <Media slot="home-welcome" className="hidden md:block" />
+            )}
+          </div>
           <div className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
             {PROMISES.map((p, i) => {
               const Glyph = Icon[PROMISE_ICONS[p.key as keyof typeof PROMISE_ICONS] ?? "Check"];
@@ -355,6 +369,11 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* The last picture before the questions: a room with the lights on,
+          seen from outside. Whatever else the page has argued, this is the
+          thing being sold. */}
+      <MediaBand slot="home-evening" />
 
       {/* ── FAQ ── */}
       <section className="border-t border-ink-200 dark:border-ink-800">

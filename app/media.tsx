@@ -44,6 +44,7 @@ const ASPECT: Record<string, string> = {
   "16/9": "aspect-[16/9]",
   "4/3": "aspect-[4/3]",
   "3/2": "aspect-[3/2]",
+  "21/9": "aspect-[21/9]",
   "1/1": "aspect-square",
 };
 
@@ -80,6 +81,97 @@ export function Media({
       decoding={priority ? "sync" : "async"}
       className={`w-full rounded-2xl object-cover ${ASPECT[meta?.aspect ?? "16/9"]} ${className}`}
     />
+  );
+}
+
+/**
+ * A photograph behind a section, faded to almost nothing.
+ *
+ * Three things make this work rather than look like a stock-photo hero:
+ *
+ *   **It is very faint.** Around 18% in light mode. The point is a wash of
+ *   warmth and a sense of a room, not a picture you look at — and body text
+ *   sitting on a photograph is unreadable long before it's illegible.
+ *
+ *   **It fades out downward.** A hard bottom edge announces "image", and the
+ *   section below then has to start with a rule to recover. The mask runs the
+ *   photograph into the page background so there is no edge at all.
+ *
+ *   **It inverts for dark mode.** A photograph that reads as a soft wash on
+ *   white reads as a bright smear on near-black, so the dark variant is
+ *   dimmer still and sits under a scrim rather than over one.
+ *
+ * `aria-hidden` unconditionally, and a `<div>` rather than an `<img>` with
+ * empty alt: this is decoration and there is never anything here worth
+ * announcing.
+ */
+export function MediaBackdrop({
+  slot,
+  className = "",
+  /** 0–100. The default is what the homepage hero uses. */
+  opacity = 18,
+}: {
+  slot: string;
+  className?: string;
+  opacity?: number;
+}) {
+  const src = BY_KEY.get(slot);
+  if (!src) return null;
+
+  return (
+    <div aria-hidden className={`pointer-events-none absolute inset-0 -z-10 overflow-hidden ${className}`}>
+      <div
+        className="size-full bg-cover bg-center bg-no-repeat opacity-[var(--backdrop-o)] dark:opacity-[var(--backdrop-o-dark)]"
+        style={
+          {
+            backgroundImage: `url(${src})`,
+            "--backdrop-o": `${opacity}%`,
+            // Dark mode gets roughly half. The same wash that is gentle on
+            // white glows on ink-950.
+            "--backdrop-o-dark": `${Math.round(opacity * 0.5)}%`,
+            // Solid for the top two thirds, then out — so the section can end
+            // wherever the layout wants without a visible edge.
+            maskImage: "linear-gradient(to bottom, black 0%, black 55%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 55%, transparent 100%)",
+          } as React.CSSProperties
+        }
+      />
+      {/* A scrim over the top. Even at 18% a photograph puts texture behind
+          body copy; this keeps the area under the headline calm without
+          flattening the whole image. */}
+      <div className="absolute inset-0 bg-gradient-to-r from-white via-white/70 to-transparent dark:from-ink-950 dark:via-ink-950/70" />
+    </div>
+  );
+}
+
+/**
+ * A photograph edge to edge across the page, breaking up the sections.
+ *
+ * Height is clamped rather than left to the aspect ratio: a 21:9 image at full
+ * viewport width is 550px tall on a laptop, which is a wall to scroll past
+ * between two sections that were meant to feel adjacent. `object-cover` inside
+ * a clamped box crops instead, which is what a magazine does.
+ *
+ * Renders nothing without a file, and the sections either side keep their own
+ * borders, so the page reads as finished either way.
+ */
+export function MediaBand({ slot, className = "" }: { slot: string; className?: string }) {
+  const src = BY_KEY.get(slot);
+  if (!src) return null;
+
+  const alt = mediaSlot(slot)?.alt ?? "";
+
+  return (
+    <div className={`border-y border-ink-200 dark:border-ink-800 ${className}`}>
+      <img
+        src={src}
+        alt={alt}
+        aria-hidden={alt === "" ? true : undefined}
+        loading="lazy"
+        decoding="async"
+        className="h-[clamp(160px,26vw,340px)] w-full object-cover"
+      />
+    </div>
   );
 }
 
